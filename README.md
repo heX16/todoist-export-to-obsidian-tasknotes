@@ -48,6 +48,23 @@ In the same settings screen, set **API authentication token** to any arbitrary
 string value (for example, `token`). Pass the same value to `--api-token` when
 running the migration script.
 
+Add a user field for idempotency: `Settings -> TaskNotes -> Task Properties ->
+User Fields` — **Todoist ID**, key `todoist_id`, type `text`. Or add to
+`.obsidian/plugins/tasknotes/data.json`:
+
+```json
+"userFields": [
+  {
+    "id": "todoist-id",
+    "displayName": "Todoist ID",
+    "key": "todoist_id",
+    "type": "text"
+  }
+]
+```
+
+Reload TaskNotes after changing user fields.
+
 ## Usage
 
 Run the full migration:

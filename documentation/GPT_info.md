@@ -102,11 +102,22 @@ Enum-значения `status` и `priority` сверять с текущим va
 
 ### Кастомное поле `todoist_id`
 
-Для идемпотентности в vault должен быть настроен user field:
+Для идемпотентности в vault должен быть настроен user field. Через UI:
 
-- key: `todoist_id`
-- type: `text`
-- конфиг: `target-obsidian/.obsidian/plugins/tasknotes/data.json` → `userFields`
+`Settings -> TaskNotes -> Task Properties -> User Fields` — добавить поле **Todoist ID** с key `todoist_id`, type `text`.
+
+Или вручную в `<vault>/.obsidian/plugins/tasknotes/data.json`, массив `userFields`:
+
+```json
+"userFields": [
+  {
+    "id": "todoist-id",
+    "displayName": "Todoist ID",
+    "key": "todoist_id",
+    "type": "text"
+  }
+]
+```
 
 После изменения user fields перезагрузить TaskNotes (disable/enable plugin или restart Obsidian).
 
@@ -124,6 +135,8 @@ Enum-значения `status` и `priority` сверять с текущим va
 ```yaml
 todoist_id: 6c2pWG4XgMCXPhM8
 ```
+
+Нативный frontmatter `id` (`id: todoist-<itemId>`) через `POST /api/tasks` **не сохраняется** — в ответе API `id` это path файла. Используем user field `todoist_id`.
 
 ## Маппинг Todoist → TaskNotes (текущий)
 

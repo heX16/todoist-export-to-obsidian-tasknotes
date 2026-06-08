@@ -48,6 +48,23 @@ Settings -> TaskNotes -> Integrations -> HTTP API
 произвольную строку (например, `token`). То же значение передайте в
 `--api-token` при запуске скрипта миграции.
 
+Для идемпотентности добавьте user field: `Settings -> TaskNotes -> Task Properties ->
+User Fields` — **Todoist ID**, key `todoist_id`, type `text`. Или вручную в
+`.obsidian/plugins/tasknotes/data.json`:
+
+```json
+"userFields": [
+  {
+    "id": "todoist-id",
+    "displayName": "Todoist ID",
+    "key": "todoist_id",
+    "type": "text"
+  }
+]
+```
+
+После изменения user fields перезагрузите TaskNotes.
+
 ## Использование
 
 Миграция:
