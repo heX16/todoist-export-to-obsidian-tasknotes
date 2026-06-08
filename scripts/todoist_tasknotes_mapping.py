@@ -118,10 +118,27 @@ def map_status(checked: bool) -> str:
     return 'done' if checked else 'open'
 
 
-def extract_due_date(due: dict[str, Any] | None) -> str | None:
-    if not due:
+def extract_date_value(value: dict[str, Any] | str | None) -> str | None:
+    """Extract ISO date or datetime from a Todoist due/deadline object."""
+    if not value:
         return None
-    return due.get('date')
+    if isinstance(value, str):
+        return value or None
+    datetime_value = value.get('datetime')
+    if datetime_value:
+        return str(datetime_value)
+    date_value = value.get('date')
+    if date_value:
+        return str(date_value)
+    return None
+
+
+def extract_scheduled_from_due(due: dict[str, Any] | None) -> str | None:
+    return extract_date_value(due)
+
+
+def extract_due_from_deadline(deadline: dict[str, Any] | str | None) -> str | None:
+    return extract_date_value(deadline)
 
 
 def format_duration_minutes(duration: dict[str, Any] | None) -> int | None:
@@ -199,11 +216,14 @@ def build_payload(
     details = build_details(item, indexes, migration_marker=migration_marker)
     todoist_id = str(item['id'])
 
+    scheduled_date = extract_scheduled_from_due(item.get('due'))
+    deadline_date = extract_due_from_deadline(item.get('deadline'))
+
     payload: dict[str, Any] = {
         'title': item['content'],
         'status': map_status(bool(item.get('checked'))),
         'priority': map_priority(item.get('priority')),
-        'scheduled': '',
+        'scheduled': scheduled_date or '',
         TODOIST_ID_FIELD_KEY: todoist_id,
         'customProperties': {
             TODOIST_ID_FIELD_KEY: todoist_id,
@@ -213,9 +233,8 @@ def build_payload(
     if details:
         payload['details'] = details
 
-    due_date = extract_due_date(item.get('due'))
-    if due_date:
-        payload['due'] = due_date
+    if deadline_date:
+        payload['due'] = deadline_date
 
     if label_names:
         payload['tags'] = label_names

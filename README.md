@@ -13,7 +13,8 @@ vault when needed.
 ## Features
 
 - Converts Todoist tasks into TaskNotes tasks.
-- Preserves titles, descriptions, status, priority, due dates, labels, projects,
+- Preserves titles, descriptions, status, priority, scheduled dates, deadlines,
+  labels, projects,
   durations, creation dates, comments, and parent-child task links.
 - Uses `todoist_id` as a custom field to avoid duplicate task creation on
   repeated runs.
@@ -82,7 +83,8 @@ create no new tasks and report duplicates as skipped.
 | `description` | `details` |
 | `checked` | `status` |
 | `priority` | `priority` |
-| `due.date` | `due` |
+| `due.date` / `due.datetime` | `scheduled` |
+| `deadline.date` | `due` |
 | `labels[]` | `tags[]` |
 | `project.name` | `projects[]` |
 | `duration` | `timeEstimate` |
@@ -91,7 +93,7 @@ create no new tasks and report duplicates as skipped.
 | `parent_id` | Parent wiki-link in `projects[]` |
 | `notes[]` | `## Todoist notes` section in `details` |
 
-The migration intentionally does not preserve Todoist deadlines, sections,
+The migration intentionally does not preserve Todoist sections,
 update timestamps, user IDs, audit flags, or Todoist recurrence as native
 TaskNotes recurrence.
 

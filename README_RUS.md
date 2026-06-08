@@ -13,7 +13,8 @@
 ## Возможности
 
 - Преобразует задачи Todoist в задачи TaskNotes.
-- Сохраняет заголовки, описания, статус, приоритет, сроки, метки, проекты,
+- Сохраняет заголовки, описания, статус, приоритет, запланированные даты,
+  дедлайны, метки, проекты,
   длительность, даты создания, комментарии и связи родитель–потомок.
 - Использует `todoist_id` как пользовательское поле, чтобы при повторных
   запусках не создавать дубликаты задач.
@@ -82,7 +83,8 @@ python migrate_todoist_to_tasknotes.py --api-token=<token>
 | `description` | `details` |
 | `checked` | `status` |
 | `priority` | `priority` |
-| `due.date` | `due` |
+| `due.date` / `due.datetime` | `scheduled` |
+| `deadline.date` | `due` |
 | `labels[]` | `tags[]` |
 | `project.name` | `projects[]` |
 | `duration` | `timeEstimate` |
@@ -91,7 +93,7 @@ python migrate_todoist_to_tasknotes.py --api-token=<token>
 | `parent_id` | Wiki-ссылка на родителя в `projects[]` |
 | `notes[]` | Секция `## Todoist notes` в `details` |
 
-Миграция намеренно **не** переносит дедлайны Todoist, секции, метки времени
+Миграция намеренно **не** переносит секции, метки времени
 обновления, ID пользователей, audit-флаги и повторяемость Todoist как нативную
 повторяемость TaskNotes.
 

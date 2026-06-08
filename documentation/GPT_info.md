@@ -133,7 +133,8 @@ todoist_id: 6c2pWG4XgMCXPhM8
 | `description` | `details` | только текст описания |
 | `checked` | `status` | `false→open`, `true→done` |
 | `priority` | `priority` | `1→none`, `2→low`, `3→normal`, `4→high` |
-| `due.date` | `due` | ISO date |
+| `due.date` / `due.datetime` | `scheduled` | план работы; при наличии времени — `due.datetime` |
+| `deadline.date` | `due` | жёсткий дедлайн (ISO date) |
 | `labels[]` | `tags[]` | TaskNotes добавляет `task` |
 | `project.name` | `projects[]` | только у корневых задач (без `parent_id`); имя, не id |
 | `duration` | `timeEstimate` | минуты (minute/hour/day) |
@@ -141,11 +142,11 @@ todoist_id: 6c2pWG4XgMCXPhM8
 | `added_at` | `dateCreated` | ISO datetime, дата создания задачи |
 | `parent_id` | `projects[]` wiki-link на родителя | только parent link, без project link |
 | `notes[]` | `details` | секция `## Todoist notes`, если есть |
-| — | `scheduled: ""` | всегда в `POST`; подавляет vault default (Today), поле не попадает в frontmatter |
+| — | `scheduled: ""` | только если в Todoist нет `due`; подавляет vault default (Today) |
 
 **Не переносится** (осознанно):
 
-- `deadline`, `section`, `updated_at`, user uids, audit flags — не сохраняются отдельно
+- `section`, `updated_at`, user uids, audit flags — не сохраняются отдельно
 - `dateModified` — выставляет TaskNotes
 - `recurrence` из Todoist `due` — не маппится в native `recurrence`
 
@@ -179,20 +180,6 @@ todoist_id: 6c2pWG4XgMCXPhM8
 
 Экспорт через Todoist Sync API (`resource_types: ["all"]`).
 
-### Основные коллекции
-
-| Ключ | Размер | Назначение |
-|---|---:|---|
-| `items` | 334 | задачи |
-| `projects` | 11 | проекты |
-| `sections` | 6 | секции |
-| `labels` | 30 | теги |
-| `collaborators` | 2 | пользователи |
-| `notes` | 0 | комментарии к задачам |
-| `project_notes` | 0 | заметки к проектам |
-| `reminders` | 0 | напоминания |
-| `completed_info` | 21 | агрегаты завершённых (не список задач) |
-
 ### `items` — ключевые поля
 
 - `id`, `content`, `description`, `checked`, `completed_at`
@@ -202,20 +189,6 @@ todoist_id: 6c2pWG4XgMCXPhM8
 - `is_deleted`, `is_collapsed`, `child_order`, `postponed_count`
 
 Связи: `project_id` → `projects`, `section_id` → `sections`, `parent_id` → другой `item`, `labels` → `labels`, notes → `notes[].item_id`.
-
-### Статистика экспорта
-
-| Метрика | Значение |
-|---|---:|
-| Всего `items` | 334 |
-| `is_deleted: true` | 0 |
-| `checked: true` | 0 |
-| С `parent_id` | 152 |
-| С `section_id` | 17 |
-| С `due` | 22 |
-| С `deadline` | 1 |
-| С `description` | 120 |
-| С `labels` | 93 |
 
 ## TaskNotes: поля задачи
 
@@ -257,7 +230,7 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 
 1. **`:id` в URL** — URL-encoded path: `urllib.parse.quote(path, safe='')`
 2. **TaskNotes добавляет тег `task`** — это нормально
-3. **`dateCreated`** — переносится из Todoist `added_at`; **`dateModified`** — выставляет TaskNotes; **`scheduled`** — в `POST` всегда передаём `""` (не `null` и не опускаем ключ), иначе TaskNotes подставит default scheduled date
+3. **`dateCreated`** — переносится из Todoist `added_at`; **`dateModified`** — выставляет TaskNotes; **`scheduled`** — ключ всегда в `POST`: дата из Todoist `due` или `""` (не `null` и не опускать ключ), иначе TaskNotes подставит default scheduled date
 4. **Labels** — в экспорте строковые имена; код поддерживает и id через `resolve_label_names()`
 5. **Obsidian должен быть запущен** — API работает только с desktop Obsidian + TaskNotes HTTP API
 6. **Без `userFields.todoist_id`** API не сохранит кастомное поле → идемпотентность сломается
