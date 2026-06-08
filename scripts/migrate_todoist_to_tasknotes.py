@@ -272,6 +272,10 @@ def migrate(args: Args) -> int:
             parent_task_path=parent_task_path,
         )
 
+        added_at = item.get('added_at')
+        if added_at:
+            payload['dateCreated'] = str(added_at)
+
         if args['dry_run']:
             stats.created += 1
             processed += 1

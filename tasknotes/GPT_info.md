@@ -132,13 +132,14 @@ todoist_id: 6c2pWG4XgMCXPhM8
 | `project.name` | `projects[]` | имя, не id |
 | `duration` | `timeEstimate` | минуты (minute/hour/day) |
 | `id` | `customProperties.todoist_id` | идемпотентность |
+| `added_at` | `dateCreated` | ISO datetime, дата создания задачи |
 | `parent_id` | `projects[]` wiki-link | режим `native-project-link` (default) |
 | `notes[]` | `details` | секция `## Todoist notes`, если есть |
 
 **Не переносится** (осознанно):
 
-- `deadline`, `section`, timestamps, user uids, audit flags — не сохраняются отдельно
-- `scheduled`, `dateCreated`, `dateModified` — выставляет TaskNotes
+- `deadline`, `section`, `updated_at`, user uids, audit flags — не сохраняются отдельно
+- `scheduled`, `dateModified` — выставляет TaskNotes
 - `recurrence` из Todoist `due` — не маппится в native `recurrence`
 
 **Не добавляется** блок `## Todoist migration metadata` в `details`.
@@ -248,7 +249,7 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 
 1. **`:id` в URL** — URL-encoded path: `urllib.parse.quote(path, safe='')`
 2. **TaskNotes добавляет тег `task`** — это нормально
-3. **`dateCreated` / `dateModified` / `scheduled`** — поля TaskNotes, не Todoist
+3. **`dateCreated`** — переносится из Todoist `added_at`; **`dateModified` / `scheduled`** — выставляет TaskNotes
 4. **Labels** — в экспорте строковые имена; код поддерживает и id через `resolve_label_names()`
 5. **Obsidian должен быть запущен** — API работает только с desktop Obsidian + TaskNotes HTTP API
 6. **Без `userFields.todoist_id`** API не сохранит кастомное поле → идемпотентность сломается
