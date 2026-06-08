@@ -66,9 +66,6 @@ class MigrationStats:
     skipped_duplicate: int = 0
     created: int = 0
     failed: int = 0
-    created_items: list[dict[str, str]] = field(default_factory=list)
-    skipped_duplicate_items: list[dict[str, str]] = field(default_factory=list)
-    failed_items: list[dict[str, str]] = field(default_factory=list)
 
 
 Args = dict[str, Any]
@@ -271,9 +268,6 @@ def build_report_data(
             'created': stats.created,
             'failed': stats.failed,
         },
-        'created_items': list(stats.created_items),
-        'skipped_duplicate_items': list(stats.skipped_duplicate_items),
-        'failed_items': list(stats.failed_items),
     }
 
 
@@ -299,28 +293,6 @@ def render_report_human(report: dict[str, Any]) -> str:
         f'- failed: {summary["failed"]}',
         '',
     ]
-
-    created_items = cast(list[dict[str, str]], report['created_items'])
-    skipped_duplicate_items = cast(list[dict[str, str]], report['skipped_duplicate_items'])
-    failed_items = cast(list[dict[str, str]], report['failed_items'])
-
-    if created_items:
-        lines.extend(['## Created tasks', ''])
-        for entry in created_items:
-            lines.append(f'- `{entry["todoist_id"]}` -> `{entry["task_path"]}` ({entry["title"]})')
-        lines.append('')
-
-    if skipped_duplicate_items:
-        lines.extend(['## Skipped duplicates', ''])
-        for entry in skipped_duplicate_items:
-            lines.append(f'- `{entry["todoist_id"]}` already at `{entry["task_path"]}`')
-        lines.append('')
-
-    if failed_items:
-        lines.extend(['## Failed tasks', ''])
-        for entry in failed_items:
-            lines.append(f'- `{entry["todoist_id"]}`: {entry["error"]}')
-        lines.append('')
 
     return '\n'.join(lines)
 
@@ -407,10 +379,6 @@ def migrate(args: Args) -> int:
         existing_path = todoist_id_cache.get(todoist_id)
         if existing_path:
             stats.skipped_duplicate += 1
-            stats.skipped_duplicate_items.append({
-                'todoist_id': todoist_id,
-                'task_path': existing_path,
-            })
             created_paths[todoist_id] = existing_path
             print_item_status(
                 'SKIP duplicate',
@@ -457,11 +425,6 @@ def migrate(args: Args) -> int:
             processed += 1
             created_paths[todoist_id] = result
             todoist_id_cache[todoist_id] = result
-            stats.created_items.append({
-                'todoist_id': todoist_id,
-                'task_path': result,
-                'title': item.get('content', ''),
-            })
             print_item_status(
                 'CREATED',
                 todoist_id,
@@ -471,10 +434,6 @@ def migrate(args: Args) -> int:
             continue
 
         stats.failed += 1
-        stats.failed_items.append({
-            'todoist_id': todoist_id,
-            'error': result,
-        })
         print_item_status(
             'FAILED',
             todoist_id,
