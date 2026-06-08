@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +15,7 @@ from tasknotes_obsidian_config import (
     apply_tasknotes_obsidian_config,
     load_api_auth_token,
     parse_api_port,
+    tasknotes_data_backup_path,
     tasknotes_data_json_path,
 )
 
@@ -57,11 +59,16 @@ class TestApplyTasknotesObsidianConfig(unittest.TestCase):
             'userFields': [],
         })
 
-        report = apply_tasknotes_obsidian_config(
-            self.vault_root,
-            api_token='new-token',
-            api_base='http://127.0.0.1:8080',
-        )
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(self.vault_root)
+            report = apply_tasknotes_obsidian_config(
+                self.vault_root,
+                api_token='new-token',
+                api_base='http://127.0.0.1:8080',
+            )
+        finally:
+            os.chdir(original_cwd)
 
         self.assertTrue(report['added_user_field'])
         self.assertTrue(report['enabled_api'])
@@ -75,7 +82,7 @@ class TestApplyTasknotesObsidianConfig(unittest.TestCase):
         self.assertEqual(data['apiAuthToken'], 'new-token')
         self.assertEqual(len(data['userFields']), 1)
         self.assertEqual(data['userFields'][0]['key'], TODOIST_ID_FIELD_KEY)
-        self.assertTrue(self.data_json_path.with_suffix('.json.bak').is_file())
+        self.assertTrue((self.vault_root / tasknotes_data_backup_path().name).is_file())
 
     def test_idempotent_second_run(self) -> None:
         self._write_data({

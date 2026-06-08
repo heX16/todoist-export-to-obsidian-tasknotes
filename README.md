@@ -52,7 +52,8 @@ python migrate_todoist_to_tasknotes.py --change-obsidian-options=1 --vault-root=
 Vault setup only (no migration) when `apiAuthToken` is not set in
 `data.json` and `--api-token` is not passed.
 
-A backup is written to `.obsidian/plugins/tasknotes/data.json.bak`. Reload
+A backup is written to `tasknotes-data.json.bak` in the current working
+directory. Reload
 TaskNotes after changing user fields (disable/enable plugin or restart
 Obsidian).
 

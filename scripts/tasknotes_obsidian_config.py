@@ -23,6 +23,12 @@ TODOIST_ID_USER_FIELD: dict[str, str] = {
     'type': TODOIST_ID_USER_FIELD_TYPE,
 }
 
+TASKNOTES_DATA_BACKUP_NAME = 'tasknotes-data.json.bak'
+
+
+def tasknotes_data_backup_path() -> Path:
+    return Path.cwd() / TASKNOTES_DATA_BACKUP_NAME
+
 
 def tasknotes_data_json_path(vault_root: Path) -> Path:
     return vault_root / '.obsidian' / 'plugins' / 'tasknotes' / 'data.json'
@@ -116,7 +122,7 @@ def apply_tasknotes_obsidian_config(
         print(f'TaskNotes config already up to date: {data_json_path}')
         return report
 
-    backup_path = data_json_path.with_suffix('.json.bak')
+    backup_path = tasknotes_data_backup_path()
     shutil.copy2(data_json_path, backup_path)
 
     serialized = json.dumps(data, indent=2, ensure_ascii=False) + '\n'

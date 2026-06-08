@@ -52,7 +52,7 @@ python migrate_todoist_to_tasknotes.py --change-obsidian-options=1 --vault-root=
 Только настройка vault (без миграции), если в `data.json` нет `apiAuthToken` и
 `--api-token` не передан.
 
-Резервная копия сохраняется в `.obsidian/plugins/tasknotes/data.json.bak`.
+Резервная копия сохраняется в `tasknotes-data.json.bak` в текущей директории.
 После изменения user fields перезагрузите TaskNotes (disable/enable плагина
 или restart Obsidian).
 

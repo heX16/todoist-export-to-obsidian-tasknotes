@@ -1,5 +1,8 @@
 _other/*
 
+# TaskNotes config backup from --change-obsidian-options
+tasknotes-data.json.bak
+
 # Python
 __pycache__
 .venv/
