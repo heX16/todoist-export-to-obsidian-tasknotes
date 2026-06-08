@@ -223,16 +223,17 @@ def build_payload(
     if label_names:
         payload['tags'] = label_names
 
+    parent_id = item.get('parent_id')
+    is_subtask = bool(parent_id)
+
     projects: list[str] = []
-    if subtasks_mode == 'parent-project-only' and parent_task_path:
+    if is_subtask:
+        if subtasks_mode != 'metadata-only' and parent_task_path:
+            projects.append(parent_project_link(parent_task_path))
+    elif subtasks_mode == 'parent-project-only' and parent_task_path:
         projects.append(parent_project_link(parent_task_path))
     elif project and project.get('name'):
         projects.append(project_wikilink(project['name']))
-
-    if subtasks_mode == 'native-project-link' and parent_task_path:
-        parent_link = parent_project_link(parent_task_path)
-        if parent_link not in projects:
-            projects.append(parent_link)
 
     if projects:
         payload['projects'] = projects

@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import json
 import sys
+import urllib.parse
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -16,7 +16,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from todoist_projects import ensure_project_note_exists  # noqa: E402
+from todoist_projects import ensure_project_note_exists, parent_project_link  # noqa: E402
 from todoist_tasknotes_mapping import (  # noqa: E402
     DEFAULT_API_BASE,
     DEFAULT_API_TOKEN,
@@ -26,7 +26,6 @@ from todoist_tasknotes_mapping import (  # noqa: E402
     build_indexes,
     build_payload,
     build_todoist_id_cache,
-    compute_creation_order,
     load_json,
 )
 
@@ -49,7 +48,7 @@ Options:
   --vault-root=<path>                 Obsidian vault root directory (for creating project notes directly).
                                       [default: {DEFAULT_VAULT_ROOT}]
   --dry-run                           Do not call API; print would-be payloads.
-  --limit=<n>                         Process at most N tasks (parents-first).
+  --limit=<n>                         Process at most N new task creations.
   --include-deleted                   Include deleted Todoist items.
   --include-completed                 Include completed Todoist items (default).
   --no-include-completed              Exclude completed Todoist items.
@@ -150,6 +149,124 @@ def create_task(
     return False, error_message, body
 
 
+def get_task_data(
+    api_base: str,
+    api_token: str,
+    task_path: str,
+) -> tuple[bool, dict[str, Any] | str]:
+    encoded_path = urllib.parse.quote(task_path, safe='')
+    status, body = api_request('GET', f'{api_base}/api/tasks/{encoded_path}', api_token)
+    if status == 200 and body.get('success'):
+        return True, body.get('data', {})
+
+    error_message = body.get('error') or json.dumps(body, ensure_ascii=False)
+    return False, error_message
+
+
+def update_task_projects(
+    api_base: str,
+    api_token: str,
+    task_path: str,
+    projects: list[str],
+) -> tuple[bool, str]:
+    encoded_path = urllib.parse.quote(task_path, safe='')
+    status, body = api_request(
+        'PUT',
+        f'{api_base}/api/tasks/{encoded_path}',
+        api_token,
+        {'projects': projects},
+    )
+    if status == 200 and body.get('success'):
+        return True, task_path
+
+    error_message = body.get('error') or json.dumps(body, ensure_ascii=False)
+    return False, error_message
+
+
+def append_parent_link_projects(existing_projects: list[str], parent_link: str) -> list[str]:
+    if parent_link in existing_projects:
+        return existing_projects
+    return [*existing_projects, parent_link]
+
+
+def attach_missing_parent_links(
+    *,
+    items: list[dict[str, Any]],
+    api_base: str,
+    api_token: str,
+    subtasks_mode: SubtasksMode,
+    include_deleted: bool,
+    include_completed: bool,
+    stop_on_error: bool,
+) -> int:
+    """Pass 2: append missing parent wiki-links to subtask projects (idempotent)."""
+    if subtasks_mode == 'metadata-only':
+        return 0
+
+    print('Pass 2: rebuilding todoist_id cache for parent linking...')
+    todoist_id_cache = build_todoist_id_cache(api_base, api_token)
+    print(f'Pass 2: {len(todoist_id_cache)} tasks in cache.')
+
+    errors = 0
+    for item in items:
+        parent_id = item.get('parent_id')
+        if not parent_id:
+            continue
+
+        skip_reason = should_skip_item(
+            item,
+            include_deleted=include_deleted,
+            include_completed=include_completed,
+        )
+        if skip_reason:
+            continue
+
+        todoist_id = item['id']
+        child_path = todoist_id_cache.get(todoist_id)
+        if not child_path:
+            print(f'SKIP link parent (child not in vault): {todoist_id} ({item.get("content", "")})')
+            continue
+
+        parent_path = todoist_id_cache.get(parent_id)
+        if not parent_path:
+            print(
+                f'SKIP link parent (parent not in vault): {todoist_id} '
+                f'parent={parent_id} ({item.get("content", "")})',
+            )
+            continue
+
+        expected_parent_link = parent_project_link(parent_path)
+        success, task_data = get_task_data(api_base, api_token, child_path)
+        if not success:
+            errors += 1
+            print(f'FAILED link parent GET: {todoist_id}: {task_data}', file=sys.stderr)
+            if stop_on_error:
+                break
+            continue
+
+        existing_projects = list((task_data or {}).get('projects') or [])
+        if expected_parent_link in existing_projects:
+            continue
+
+        merged_projects = append_parent_link_projects(existing_projects, expected_parent_link)
+        update_success, update_result = update_task_projects(
+            api_base,
+            api_token,
+            child_path,
+            merged_projects,
+        )
+        if update_success:
+            print(f'LINKED parent: {todoist_id} -> {expected_parent_link} on {child_path}')
+            continue
+
+        errors += 1
+        print(f'FAILED link parent PUT: {todoist_id}: {update_result}', file=sys.stderr)
+        if stop_on_error:
+            break
+
+    return errors
+
+
 def build_report_data(
     *,
     stats: MigrationStats,
@@ -236,13 +353,11 @@ def render_report_json(report: dict[str, Any]) -> str:
 
 
 def migrate(args: Args) -> int:
-    started_at = datetime.now(timezone.utc)
     data = load_json(args['json_path'])
     indexes = build_indexes(data)
-    items = list(indexes['items'].values())
-    ordered_items = compute_creation_order(items)
+    items = list(data.get('items', []))
 
-    stats = MigrationStats(total=len(ordered_items))
+    stats = MigrationStats(total=len(items))
     todoist_id_cache: dict[str, str] = {}
     created_paths: dict[str, str] = {}
 
@@ -253,12 +368,12 @@ def migrate(args: Args) -> int:
             print(json.dumps(health_body, indent=2, ensure_ascii=False), file=sys.stderr)
             return 1
 
-        print('Building todoist_id cache from existing TaskNotes tasks...')
+        print('Pass 1: building todoist_id cache from existing TaskNotes tasks...')
         todoist_id_cache = build_todoist_id_cache(args['api_base'], args['api_token'])
-        print(f'Found {len(todoist_id_cache)} previously imported tasks.')
+        print(f'Pass 1: found {len(todoist_id_cache)} previously imported tasks.')
 
     processed = 0
-    for item in ordered_items:
+    for item in items:
         if args['limit'] is not None and processed >= args['limit']:
             break
 
@@ -339,7 +454,20 @@ def migrate(args: Args) -> int:
         if args['stop_on_error']:
             break
 
-    finished_at = datetime.now(timezone.utc)
+    link_errors = 0
+    if not args['dry_run']:
+        link_errors = attach_missing_parent_links(
+            items=items,
+            api_base=args['api_base'],
+            api_token=args['api_token'],
+            subtasks_mode=args['subtasks_mode'],
+            include_deleted=args['include_deleted'],
+            include_completed=args['include_completed'],
+            stop_on_error=args['stop_on_error'],
+        )
+    else:
+        print('DRY-RUN: skipping pass 2 (parent link attachment).')
+
     report = build_report_data(
         stats=stats,
         dry_run=args['dry_run'],
@@ -355,7 +483,7 @@ def migrate(args: Args) -> int:
     elif report_format == 'json':
         print(render_report_json(report))
 
-    return 1 if stats.failed else 0
+    return 1 if stats.failed or link_errors else 0
 
 
 def main() -> int:
