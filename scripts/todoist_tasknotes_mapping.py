@@ -10,6 +10,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Literal
 
+from todoist_projects import parent_project_link, project_wikilink
+
 DEFAULT_API_BASE = 'http://127.0.0.1:16876'
 DEFAULT_API_TOKEN = 'tasknotes-token'
 DEFAULT_JSON_PATH = Path(__file__).resolve().parent.parent / 'source-todoist' / 'todoist.json'
@@ -139,26 +141,6 @@ def format_duration_minutes(duration: dict[str, Any] | None) -> int | None:
     if unit == 'day':
         return int(amount) * 24 * 60
     return None
-
-
-def task_path_basename(task_path: str) -> str:
-    return Path(task_path).stem
-
-
-def sanitize_obsidian_note_name(name: str) -> str:
-    """Sanitize a project name for use as an Obsidian note filename."""
-    return name.strip().replace('/', '／').replace('\\', '＼')
-
-
-def project_wikilink(project_name: str) -> str:
-    """Return an Obsidian wiki-link target for the given project name."""
-    safe_name = sanitize_obsidian_note_name(project_name)
-    link_target = safe_name[:-3] if safe_name.lower().endswith('.md') else safe_name
-    return f'[[{link_target}]]'
-
-
-def parent_project_link(parent_task_path: str) -> str:
-    return f'[[{task_path_basename(parent_task_path)}]]'
 
 
 def extract_todoist_id_from_task_data(task_data: dict[str, Any]) -> str | None:

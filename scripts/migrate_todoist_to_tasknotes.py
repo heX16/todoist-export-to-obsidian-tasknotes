@@ -15,6 +15,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from todoist_projects import ensure_project_note_exists  # noqa: E402
 from todoist_tasknotes_mapping import (  # noqa: E402
     DEFAULT_API_BASE,
     DEFAULT_API_TOKEN,
@@ -26,7 +27,6 @@ from todoist_tasknotes_mapping import (  # noqa: E402
     build_todoist_id_cache,
     compute_creation_order,
     load_json,
-    sanitize_obsidian_note_name,
 )
 
 
@@ -73,42 +73,6 @@ def create_task(
 
     error_message = body.get('error') or json.dumps(body, ensure_ascii=False)
     return False, error_message, body
-
-
-def _project_note_path(vault_root: Path, project_name: str) -> Path:
-    """
-    Return the expected Obsidian project note path in the vault root.
-
-    Notes:
-    - Obsidian note names cannot contain path separators. Replace them to avoid
-      accidentally creating nested paths.
-    """
-    safe_name = sanitize_obsidian_note_name(project_name)
-    if safe_name.lower().endswith('.md'):
-        return vault_root / safe_name
-    return vault_root / f'{safe_name}.md'
-
-
-def ensure_project_note_exists(vault_root: Path, project_name: str) -> Path | None:
-    """
-    Ensure an Obsidian root-level note exists for the given project.
-
-    This intentionally bypasses the TaskNotes HTTP API and writes directly into
-    the vault.
-    """
-    if not project_name or not project_name.strip():
-        return None
-    if not vault_root.exists() or not vault_root.is_dir():
-        raise RuntimeError(f'Vault root directory does not exist: {vault_root}')
-
-    path = _project_note_path(vault_root, project_name)
-    if path.exists():
-        return path
-
-    # Create an empty markdown note. Keep it minimal to avoid imposing
-    # formatting decisions on the user's vault.
-    path.write_text('\n', encoding='utf-8')
-    return path
 
 
 def write_report(
