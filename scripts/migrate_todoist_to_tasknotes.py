@@ -21,7 +21,6 @@ from todoist_tasknotes_mapping import (  # noqa: E402
     DEFAULT_API_BASE,
     DEFAULT_API_TOKEN,
     DEFAULT_JSON_PATH,
-    SubtasksMode,
     api_request,
     build_indexes,
     build_payload,
@@ -53,9 +52,6 @@ Options:
   --include-completed                 Include completed Todoist items (default).
   --no-include-completed              Exclude completed Todoist items.
   --stop-on-error                     Stop at first failed task creation.
-  --subtasks-mode=<mode>              Subtasks handling mode.
-                                      One of: native-project-link, metadata-only, parent-project-only
-                                      [default: native-project-link]
   --report-format=<format>            Final report format printed to stdout.
                                       One of: human, json
                                       [default: human]
@@ -78,13 +74,6 @@ class MigrationStats:
 Args = dict[str, Any]
 
 
-ALLOWED_SUBTASKS_MODES: set[str] = {
-    'native-project-link',
-    'metadata-only',
-    'parent-project-only',
-}
-
-
 def _parse_int(value: str | None, *, option_name: str) -> int | None:
     if value is None:
         return None
@@ -98,10 +87,6 @@ def parse_args(argv: list[str] | None = None) -> Args:
     options = docopt(USAGE, argv=argv)
 
     limit = _parse_int(options['--limit'], option_name='--limit')
-    subtasks_mode = str(options['--subtasks-mode'])
-    if subtasks_mode not in ALLOWED_SUBTASKS_MODES:
-        allowed = ', '.join(sorted(ALLOWED_SUBTASKS_MODES))
-        raise SystemExit(f'ERROR: --subtasks-mode must be one of: {allowed}')
 
     report_format = str(options['--report-format'])
     if report_format not in ('human', 'json'):
@@ -117,7 +102,6 @@ def parse_args(argv: list[str] | None = None) -> Args:
         'include_deleted': bool(options['--include-deleted']),
         'include_completed': not bool(options['--no-include-completed']),
         'stop_on_error': bool(options['--stop-on-error']),
-        'subtasks_mode': cast(SubtasksMode, subtasks_mode),
         'report_format': report_format,
     }
 
@@ -194,15 +178,11 @@ def attach_missing_parent_links(
     items: list[dict[str, Any]],
     api_base: str,
     api_token: str,
-    subtasks_mode: SubtasksMode,
     include_deleted: bool,
     include_completed: bool,
     stop_on_error: bool,
 ) -> int:
     """Pass 2: append missing parent wiki-links to subtask projects (idempotent)."""
-    if subtasks_mode == 'metadata-only':
-        return 0
-
     print('Pass 2: rebuilding todoist_id cache for parent linking...')
     todoist_id_cache = build_todoist_id_cache(api_base, api_token)
     print(f'Pass 2: {len(todoist_id_cache)} tasks in cache.')
@@ -272,7 +252,6 @@ def build_report_data(
     stats: MigrationStats,
     dry_run: bool,
     limit: int | None,
-    subtasks_mode: SubtasksMode,
     json_path: Path,
     api_base: str,
 ) -> dict[str, Any]:
@@ -284,7 +263,6 @@ def build_report_data(
         'limit': limit,
         'json_source': str(json_path),
         'api_base': api_base,
-        'subtasks_mode': subtasks_mode,
         'summary': {
             'total': stats.total,
             'skipped_deleted': stats.skipped_deleted,
@@ -310,7 +288,6 @@ def render_report_human(report: dict[str, Any]) -> str:
         f'- Limit: {report["limit"] if report["limit"] is not None else "none"}',
         f'- JSON source: `{report["json_source"]}`',
         f'- API base: `{report["api_base"]}`',
-        f'- Subtasks mode: `{report["subtasks_mode"]}`',
         '',
         '## Summary',
         '',
@@ -405,13 +382,12 @@ def migrate(args: Args) -> int:
 
         parent_id = item.get('parent_id')
         parent_task_path = created_paths.get(parent_id) if parent_id else None
-        if parent_id and args['subtasks_mode'] != 'metadata-only' and not parent_task_path:
+        if parent_id and not parent_task_path:
             parent_task_path = todoist_id_cache.get(parent_id)
 
         payload = build_payload(
             item,
             indexes,
-            subtasks_mode=args['subtasks_mode'],
             parent_task_path=parent_task_path,
         )
 
@@ -460,7 +436,6 @@ def migrate(args: Args) -> int:
             items=items,
             api_base=args['api_base'],
             api_token=args['api_token'],
-            subtasks_mode=args['subtasks_mode'],
             include_deleted=args['include_deleted'],
             include_completed=args['include_completed'],
             stop_on_error=args['stop_on_error'],
@@ -472,7 +447,6 @@ def migrate(args: Args) -> int:
         stats=stats,
         dry_run=args['dry_run'],
         limit=args['limit'],
-        subtasks_mode=args['subtasks_mode'],
         json_path=args['json_path'],
         api_base=args['api_base'],
     )

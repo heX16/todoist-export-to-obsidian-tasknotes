@@ -8,7 +8,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from todoist_projects import parent_project_link, project_wikilink
 
@@ -16,8 +16,6 @@ DEFAULT_API_BASE = 'http://127.0.0.1:16876'
 DEFAULT_API_TOKEN = 'tasknotes-token'
 DEFAULT_JSON_PATH = Path(__file__).resolve().parent.parent / 'source-todoist' / 'todoist.json'
 TODOIST_ID_FIELD_KEY = 'todoist_id'
-
-SubtasksMode = Literal['native-project-link', 'metadata-only', 'parent-project-only']
 
 # Todoist priority: 1 = default, 4 = highest (red flag).
 TODOIST_PRIORITY_TO_TASKNOTES = {
@@ -193,7 +191,6 @@ def build_payload(
     indexes: dict[str, Any],
     *,
     migration_marker: str | None = None,
-    subtasks_mode: SubtasksMode = 'metadata-only',
     parent_task_path: str | None = None,
 ) -> dict[str, Any]:
     project = indexes['projects'].get(str(item.get('project_id')))
@@ -228,10 +225,8 @@ def build_payload(
 
     projects: list[str] = []
     if is_subtask:
-        if subtasks_mode != 'metadata-only' and parent_task_path:
+        if parent_task_path:
             projects.append(parent_project_link(parent_task_path))
-    elif subtasks_mode == 'parent-project-only' and parent_task_path:
-        projects.append(parent_project_link(parent_task_path))
     elif project and project.get('name'):
         projects.append(project_wikilink(project['name']))
 

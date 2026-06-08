@@ -40,7 +40,7 @@ class TestNumericTodoistIds(unittest.TestCase):
 
     def test_payload_uses_string_todoist_id(self) -> None:
         item = _item_by_id(self.items_by_id, '100')
-        payload = build_payload(item, self.indexes, subtasks_mode='native-project-link')
+        payload = build_payload(item, self.indexes)
 
         self.assertEqual(payload['todoist_id'], '100')
         self.assertEqual(payload['customProperties'], {'todoist_id': '100'})

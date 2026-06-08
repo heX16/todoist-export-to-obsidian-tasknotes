@@ -32,15 +32,6 @@ class TestParseArgs(unittest.TestCase):
         args = migrator.parse_args(['--no-include-completed'])
         self.assertFalse(args['include_completed'])
 
-    def test_subtasks_mode_accepts_known_values(self) -> None:
-        args = migrator.parse_args(['--subtasks-mode=metadata-only'])
-        self.assertEqual(args['subtasks_mode'], 'metadata-only')
-
-    def test_subtasks_mode_rejects_unknown_values(self) -> None:
-        with self.assertRaises(SystemExit) as ctx:
-            migrator.parse_args(['--subtasks-mode=invalid-mode'])
-        self.assertIn('ERROR: --subtasks-mode must be one of:', str(ctx.exception))
-
 
 if __name__ == '__main__':
     unittest.main()

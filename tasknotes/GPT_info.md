@@ -147,8 +147,6 @@ todoist_id: 6c2pWG4XgMCXPhM8
 
 ### Subtasks
 
-Режим по умолчанию: `native-project-link` (ещё: `metadata-only`, `parent-project-only`).
-
 - Корень → `projects: [TodoistProject]`
 - Сабтаск → только `projects: ["[[parent-basename]]"]` (stem файла родителя в vault)
 
@@ -157,7 +155,7 @@ todoist_id: 6c2pWG4XgMCXPhM8
 1. **Pass 1** (`POST`): создать задачи в порядке JSON. Сабтаск с известным родителем — сразу с link, иначе без `projects`.
 2. **Pass 2** (`GET`+`PUT`, только реальный запуск): пересобрать кэш `todoist_id→path`, дописать недостающий `[[parent]]` в `projects` (append-only, идемпотентно).
 
-`--limit` — только pass 1. `--dry-run` / `metadata-only` — pass 2 пропускается.
+`--limit` — только pass 1. `--dry-run` — pass 2 пропускается.
 
 ### Идемпотентность
 
@@ -248,7 +246,6 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 | `--vault-root` | `target-obsidian` (создание `<Project>.md` в корне vault) |
 | `--include-deleted` | skip с логом |
 | `--include-completed` | include (`status: done`) |
-| `--subtasks-mode` | `native-project-link` |
 | `--report-format` | `human` (печать отчёта в stdout; варианты: `human`, `json`) |
 
 ## Подводные камни

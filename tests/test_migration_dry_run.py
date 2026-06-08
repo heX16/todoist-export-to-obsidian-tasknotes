@@ -41,7 +41,6 @@ def _dry_run_args(**overrides) -> migrator.Args:
         'include_deleted': False,
         'include_completed': True,
         'stop_on_error': False,
-        'subtasks_mode': 'native-project-link',
         'report_format': 'human',
     }
     base.update(overrides)

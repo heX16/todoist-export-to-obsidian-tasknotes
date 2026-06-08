@@ -24,11 +24,7 @@ class TestPayloadMapping(unittest.TestCase):
 
     def test_item_100_payload_fields(self) -> None:
         item = self.items_by_id['100']
-        payload = build_payload(
-            item,
-            self.indexes,
-            subtasks_mode='native-project-link',
-        )
+        payload = build_payload(item, self.indexes)
 
         self.assertEqual(payload['title'], 'Parent task')
         self.assertEqual(payload['status'], 'open')
@@ -53,7 +49,6 @@ class TestPayloadMapping(unittest.TestCase):
         payload = build_payload(
             item,
             self.indexes,
-            subtasks_mode='native-project-link',
             parent_task_path='Tasks/Parent task.md',
         )
 
@@ -61,11 +56,7 @@ class TestPayloadMapping(unittest.TestCase):
 
     def test_item_101_subtask_omits_projects_when_parent_unknown(self) -> None:
         item = self.items_by_id['101']
-        payload = build_payload(
-            item,
-            self.indexes,
-            subtasks_mode='native-project-link',
-        )
+        payload = build_payload(item, self.indexes)
 
         self.assertNotIn('projects', payload)
 

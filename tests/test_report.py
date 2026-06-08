@@ -26,7 +26,6 @@ class TestReportRender(unittest.TestCase):
             stats=stats,
             dry_run=True,
             limit=None,
-            subtasks_mode='native-project-link',
             json_path=Path('tests/todoist_minimal.json'),
             api_base='http://127.0.0.1:16876',
         )
@@ -46,7 +45,6 @@ class TestReportRender(unittest.TestCase):
             stats=stats,
             dry_run=True,
             limit=None,
-            subtasks_mode='native-project-link',
             json_path=Path('tests/todoist_minimal.json'),
             api_base='http://127.0.0.1:16876',
         )
