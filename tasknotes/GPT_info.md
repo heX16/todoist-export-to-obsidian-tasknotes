@@ -141,11 +141,12 @@ todoist_id: 6c2pWG4XgMCXPhM8
 | `added_at` | `dateCreated` | ISO datetime, дата создания задачи |
 | `parent_id` | `projects[]` wiki-link на родителя | только parent link, без project link |
 | `notes[]` | `details` | секция `## Todoist notes`, если есть |
+| — | `scheduled: ""` | всегда в `POST`; подавляет vault default (Today), поле не попадает в frontmatter |
 
 **Не переносится** (осознанно):
 
 - `deadline`, `section`, `updated_at`, user uids, audit flags — не сохраняются отдельно
-- `scheduled`, `dateModified` — выставляет TaskNotes
+- `dateModified` — выставляет TaskNotes
 - `recurrence` из Todoist `due` — не маппится в native `recurrence`
 
 **Не добавляется** блок `## Todoist migration metadata` в `details`.
@@ -231,7 +232,6 @@ todoist_id: 6c2pWG4XgMCXPhM8
 title: Взять все что тут написано, и составить расписание
 status: open
 priority: none
-scheduled: 2026-06-08
 projects:
   - Routines
 tags:
@@ -257,7 +257,7 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 
 1. **`:id` в URL** — URL-encoded path: `urllib.parse.quote(path, safe='')`
 2. **TaskNotes добавляет тег `task`** — это нормально
-3. **`dateCreated`** — переносится из Todoist `added_at`; **`dateModified` / `scheduled`** — выставляет TaskNotes
+3. **`dateCreated`** — переносится из Todoist `added_at`; **`dateModified`** — выставляет TaskNotes; **`scheduled`** — в `POST` всегда передаём `""` (не `null` и не опускаем ключ), иначе TaskNotes подставит default scheduled date
 4. **Labels** — в экспорте строковые имена; код поддерживает и id через `resolve_label_names()`
 5. **Obsidian должен быть запущен** — API работает только с desktop Obsidian + TaskNotes HTTP API
 6. **Без `userFields.todoist_id`** API не сохранит кастомное поле → идемпотентность сломается
