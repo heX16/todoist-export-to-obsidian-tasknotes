@@ -8,7 +8,7 @@ import sys
 import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TextIO, cast
 
 from docopt import docopt
 
@@ -330,11 +330,37 @@ def render_report_json(report: dict[str, Any]) -> str:
 
 
 def migrate(args: Args) -> int:
+    stats_total: int | None = None
+    current_index: int | None = None
+
+    def print_item_status(
+        label: str,
+        todoist_id: str,
+        *,
+        title: str | None = None,
+        detail: str | None = None,
+        detail_sep: str = ' ',
+        file: TextIO = sys.stdout,
+    ) -> None:
+        nonlocal stats_total, current_index
+
+        prefix = ''
+        if current_index is not None and stats_total is not None:
+            prefix = f'[{current_index}/{stats_total}] '
+
+        message = f'{prefix}{label}: {todoist_id}'
+        if detail:
+            message += f'{detail_sep}{detail}'
+        if title:
+            message += f' ({title})'
+        print(message, file=file)
+
     data = load_json(args['json_path'])
     indexes = build_indexes(data)
     items = list(data.get('items', []))
 
     stats = MigrationStats(total=len(items))
+    stats_total = stats.total
     todoist_id_cache: dict[str, str] = {}
     created_paths: dict[str, str] = {}
 
@@ -350,7 +376,8 @@ def migrate(args: Args) -> int:
         print(f'Pass 1: found {len(todoist_id_cache)} previously imported tasks.')
 
     processed = 0
-    for item in items:
+    for index, item in enumerate(items, start=1):
+        current_index = index
         if args['limit'] is not None and processed >= args['limit']:
             break
 
@@ -362,11 +389,19 @@ def migrate(args: Args) -> int:
         )
         if skip_reason == 'deleted':
             stats.skipped_deleted += 1
-            print(f'SKIP deleted: {todoist_id} ({item.get("content", "")})')
+            print_item_status(
+                'SKIP deleted',
+                todoist_id,
+                title=item.get('content', ''),
+            )
             continue
         if skip_reason == 'completed':
             stats.skipped_completed += 1
-            print(f'SKIP completed: {todoist_id} ({item.get("content", "")})')
+            print_item_status(
+                'SKIP completed',
+                todoist_id,
+                title=item.get('content', ''),
+            )
             continue
 
         existing_path = todoist_id_cache.get(todoist_id)
@@ -377,7 +412,12 @@ def migrate(args: Args) -> int:
                 'task_path': existing_path,
             })
             created_paths[todoist_id] = existing_path
-            print(f'SKIP duplicate: {todoist_id} -> {existing_path}')
+            print_item_status(
+                'SKIP duplicate',
+                todoist_id,
+                detail=existing_path,
+                detail_sep=' -> ',
+            )
             continue
 
         parent_id = item.get('parent_id')
@@ -398,7 +438,11 @@ def migrate(args: Args) -> int:
         if args['dry_run']:
             stats.created += 1
             processed += 1
-            print(f'DRY-RUN create: {todoist_id} ({item.get("content", "")})')
+            print_item_status(
+                'DRY-RUN create',
+                todoist_id,
+                title=item.get('content', ''),
+            )
             print(json.dumps(payload, indent=2, ensure_ascii=False))
             continue
 
@@ -418,7 +462,12 @@ def migrate(args: Args) -> int:
                 'task_path': result,
                 'title': item.get('content', ''),
             })
-            print(f'CREATED: {todoist_id} -> {result}')
+            print_item_status(
+                'CREATED',
+                todoist_id,
+                detail=result,
+                detail_sep=' -> ',
+            )
             continue
 
         stats.failed += 1
@@ -426,7 +475,13 @@ def migrate(args: Args) -> int:
             'todoist_id': todoist_id,
             'error': result,
         })
-        print(f'FAILED: {todoist_id}: {result}', file=sys.stderr)
+        print_item_status(
+            'FAILED',
+            todoist_id,
+            detail=result,
+            detail_sep=': ',
+            file=sys.stderr,
+        )
         if args['stop_on_error']:
             break
 
