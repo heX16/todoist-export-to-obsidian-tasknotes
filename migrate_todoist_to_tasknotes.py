@@ -38,7 +38,7 @@ USAGE = f'''Migrate Todoist JSON export into TaskNotes via HTTP API.
 
 Usage:
   migrate_todoist_to_tasknotes.py --api-token=<token> [options]
-  migrate_todoist_to_tasknotes.py --change-obsidian-options=1 [options]
+  migrate_todoist_to_tasknotes.py --configure-obsidian=1 [options]
   migrate_todoist_to_tasknotes.py (-h | --help)
 
 Options:
@@ -47,16 +47,17 @@ Options:
                                       [default: {DEFAULT_JSON_PATH}]
   --api-base=<url>                    TaskNotes API base URL.
                                       [default: {DEFAULT_API_BASE}]
-  --api-token=<token>                 TaskNotes API token (optional with --change-obsidian-options=1).
+  --api-token=<token>                 TaskNotes API token (optional with --configure-obsidian=1).
   --vault-root=<path>                 Obsidian vault root directory (for creating project notes directly).
                                       [default: {DEFAULT_VAULT_ROOT}]
-  --change-obsidian-options=<n>       Update TaskNotes data.json (userFields, HTTP API).
+  --configure-obsidian=<n>            Update TaskNotes data.json (userFields, HTTP API).
                                       [default: 0]
   --dry-run                           Do not call API; print would-be payloads.
   --limit=<n>                         Process at most N new task creations.
-  --include-deleted                   Include deleted Todoist items.
-  --include-completed                 Include completed Todoist items (default).
-  --no-include-completed              Exclude completed Todoist items.
+  --include-deleted=<n>               Include deleted Todoist items.
+                                      [default: 0]
+  --include-completed=<n>             Include completed Todoist items.
+                                      [default: 1]
   --stop-on-error                     Stop at first failed task creation.
   --report-format=<format>            Final report format printed to stdout.
                                       One of: human, json
@@ -103,9 +104,17 @@ def parse_args(argv: list[str] | None = None) -> Args:
     options = docopt(USAGE, argv=argv)
 
     limit = _parse_int(options['--limit'], option_name='--limit')
-    change_obsidian_options = _parse_flag(
-        options['--change-obsidian-options'],
-        option_name='--change-obsidian-options',
+    configure_obsidian = _parse_flag(
+        options['--configure-obsidian'],
+        option_name='--configure-obsidian',
+    )
+    include_deleted = _parse_flag(
+        options['--include-deleted'],
+        option_name='--include-deleted',
+    )
+    include_completed = _parse_flag(
+        options['--include-completed'],
+        option_name='--include-completed',
     )
 
     report_format = str(options['--report-format'])
@@ -113,7 +122,7 @@ def parse_args(argv: list[str] | None = None) -> Args:
         raise SystemExit('ERROR: --report-format must be one of: human, json')
 
     api_token = options['--api-token']
-    if not api_token and not change_obsidian_options:
+    if not api_token and not configure_obsidian:
         raise SystemExit('ERROR: --api-token is required')
 
     return {
@@ -121,11 +130,11 @@ def parse_args(argv: list[str] | None = None) -> Args:
         'api_base': str(options['--api-base']),
         'api_token': str(api_token) if api_token else None,
         'vault_root': Path(options['--vault-root']),
-        'change_obsidian_options': change_obsidian_options,
+        'configure_obsidian': configure_obsidian,
         'dry_run': bool(options['--dry-run']),
         'limit': limit,
-        'include_deleted': bool(options['--include-deleted']),
-        'include_completed': not bool(options['--no-include-completed']),
+        'include_deleted': include_deleted,
+        'include_completed': include_completed,
         'stop_on_error': bool(options['--stop-on-error']),
         'report_format': report_format,
     }
@@ -505,14 +514,14 @@ def migrate(args: Args) -> int:
 def main() -> int:
     args = parse_args()
 
-    if args['change_obsidian_options']:
+    if args['configure_obsidian']:
         apply_tasknotes_obsidian_config(
             args['vault_root'],
             api_token=args['api_token'],
             api_base=args['api_base'],
         )
 
-    if args['api_token'] is None and args['change_obsidian_options']:
+    if args['api_token'] is None and args['configure_obsidian']:
         args['api_token'] = load_api_auth_token(args['vault_root'])
 
     if args['api_token'] is None:

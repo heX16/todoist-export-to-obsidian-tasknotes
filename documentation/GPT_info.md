@@ -104,14 +104,14 @@ Enum-значения `status` и `priority` сверять с текущим va
 
 Для идемпотентности в vault должен быть настроен user field `todoist_id`.
 
-Автоматически (рекомендуется): `--change-obsidian-options=1` — правит
+Автоматически (рекомендуется): `--configure-obsidian=1` — правит
 `<vault>/.obsidian/plugins/tasknotes/data.json` (добавляет `userFields`,
 включает `enableAPI`, синхронизирует `apiPort` из `--api-base`). Для миграции
 `apiAuthToken` читается из `data.json`, если `--api-token` не передан;
 `--api-token` переопределяет сохранённое значение и записывается в config.
 
 ```bash
-python migrate_todoist_to_tasknotes.py --change-obsidian-options=1 --vault-root=<vault>
+python migrate_todoist_to_tasknotes.py --configure-obsidian=1 --vault-root=<vault>
 ```
 
 Вручную через UI: `Settings -> TaskNotes -> Task Properties -> User Fields` —
@@ -233,9 +233,9 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 | `--api-base` | `http://127.0.0.1:16876` |
 | `--api-token` | `tasknotes-token` |
 | `--vault-root` | `target-obsidian` (создание `<Project>.md` в корне vault) |
-| `--change-obsidian-options` | `0` (при `1` — правка `data.json`; без `--api-token` только setup) |
-| `--include-deleted` | skip с логом |
-| `--include-completed` | include (`status: done`) |
+| `--configure-obsidian` | `0` (при `1` — правка `data.json`; без `--api-token` только setup) |
+| `--include-deleted` | `0` (skip с логом; `1` — include) |
+| `--include-completed` | `1` (include `status: done`; `0` — skip) |
 | `--report-format` | `human` (печать отчёта в stdout; варианты: `human`, `json`) |
 
 ## Подводные камни

@@ -46,7 +46,7 @@ Obsidian, чтобы плагин не перезаписал `data.json` во �
 переопределить сохранённое значение:
 
 ```bash
-python migrate_todoist_to_tasknotes.py --change-obsidian-options=1 --vault-root=<vault>
+python migrate_todoist_to_tasknotes.py --configure-obsidian=1 --vault-root=<vault>
 ```
 
 Только настройка vault (без миграции), если в `data.json` нет `apiAuthToken` и
@@ -76,14 +76,13 @@ python migrate_todoist_to_tasknotes.py --api-token=<token>
 ```text
 --json-path=<path>           Путь к JSON-экспорту Todoist.
 --api-base=<url>             Базовый URL API TaskNotes (по умолчанию: http://127.0.0.1:8080).
---api-token=<token>          Токен API TaskNotes (необязателен с --change-obsidian-options=1, если есть в data.json).
+--api-token=<token>          Токен API TaskNotes (необязателен с --configure-obsidian=1, если есть в data.json).
 --vault-root=<path>          Корень vault Obsidian для заметок проектов.
---change-obsidian-options=<n>  Обновить TaskNotes data.json (userFields, HTTP API). [0]
+--configure-obsidian=<n>     Обновить TaskNotes data.json (userFields, HTTP API). [0]
 --dry-run                    Печатать payload-ы без вызова API.
 --limit=<n>                  Создать не более N новых задач.
---include-deleted            Включить удалённые элементы Todoist.
---include-completed          Включить завершённые элементы Todoist.
---no-include-completed       Исключить завершённые элементы Todoist.
+--include-deleted=<n>        Включить удалённые элементы Todoist. [0]
+--include-completed=<n>      Включить завершённые элементы Todoist. [1]
 --stop-on-error              Остановиться после первой неудачной попытки создания задачи.
 --report-format=<format>     Формат отчёта: human или json.
 ```

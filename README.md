@@ -46,7 +46,7 @@ Configure TaskNotes and migrate in one run. The script reads `apiAuthToken` from
 the stored value:
 
 ```bash
-python migrate_todoist_to_tasknotes.py --change-obsidian-options=1 --vault-root=<vault>
+python migrate_todoist_to_tasknotes.py --configure-obsidian=1 --vault-root=<vault>
 ```
 
 Vault setup only (no migration) when `apiAuthToken` is not set in
@@ -78,14 +78,13 @@ create no new tasks and report duplicates as skipped.
 ```text
 --json-path=<path>           Path to the Todoist JSON export.
 --api-base=<url>             TaskNotes API base URL (default: http://127.0.0.1:8080).
---api-token=<token>          TaskNotes API token (required unless --change-obsidian-options=1 reads it from data.json).
+--api-token=<token>          TaskNotes API token (required unless --configure-obsidian=1 reads it from data.json).
 --vault-root=<path>          Obsidian vault root used for project notes.
---change-obsidian-options=<n>  Update TaskNotes data.json (userFields, HTTP API). [0]
+--configure-obsidian=<n>     Update TaskNotes data.json (userFields, HTTP API). [0]
 --dry-run                    Print payloads without calling the API.
 --limit=<n>                  Create at most N new tasks.
---include-deleted            Include deleted Todoist items.
---include-completed          Include completed Todoist items.
---no-include-completed       Exclude completed Todoist items.
+--include-deleted=<n>        Include deleted Todoist items. [0]
+--include-completed=<n>      Include completed Todoist items. [1]
 --stop-on-error              Stop after the first failed task creation.
 --report-format=<format>     Report format: human or json.
 ```

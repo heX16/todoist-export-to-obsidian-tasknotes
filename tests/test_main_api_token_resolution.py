@@ -39,7 +39,7 @@ class TestMainApiTokenResolution(unittest.TestCase):
             'api_base': 'http://127.0.0.1:8080',
             'api_token': None,
             'vault_root': self.vault_root,
-            'change_obsidian_options': True,
+            'configure_obsidian': True,
             'dry_run': False,
             'limit': None,
             'include_deleted': False,
@@ -48,7 +48,7 @@ class TestMainApiTokenResolution(unittest.TestCase):
             'report_format': 'human',
         }
 
-    def test_change_obsidian_options_uses_token_from_config(self) -> None:
+    def test_configure_obsidian_uses_token_from_config(self) -> None:
         with patch.object(migrator, 'parse_args', return_value=self._base_args()):
             with patch.object(migrator, 'migrate', return_value=0) as migrate_mock:
                 exit_code = migrator.main()
@@ -57,7 +57,7 @@ class TestMainApiTokenResolution(unittest.TestCase):
         migrate_mock.assert_called_once()
         self.assertEqual(migrate_mock.call_args.args[0]['api_token'], 'stored-token')
 
-    def test_change_obsidian_options_without_token_exits_after_setup(self) -> None:
+    def test_configure_obsidian_without_token_exits_after_setup(self) -> None:
         self.data_json_path.write_text(
             json.dumps({'enableAPI': False, 'userFields': []}) + '\n',
             encoding='utf-8',
