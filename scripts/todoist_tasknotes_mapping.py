@@ -45,15 +45,15 @@ def build_indexes(data: dict[str, Any]) -> dict[str, Any]:
 
     return {
         'projects': {
-            project['id']: project
+            str(project['id']): project
             for project in data.get('projects', [])
         },
         'sections': {
-            section['id']: section
+            str(section['id']): section
             for section in data.get('sections', [])
         },
         'items': {
-            item['id']: item
+            str(item['id']): item
             for item in data.get('items', [])
         },
         'collaborators': {
@@ -75,7 +75,7 @@ def _index_notes(notes: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]
         item_id = note.get('item_id')
         if item_id is None:
             continue
-        indexed.setdefault(item_id, []).append(note)
+        indexed.setdefault(str(item_id), []).append(note)
     return indexed
 
 
@@ -87,7 +87,7 @@ def _index_project_notes(notes: list[dict[str, Any]]) -> dict[str, list[dict[str
         project_id = note.get('project_id')
         if project_id is None:
             continue
-        indexed.setdefault(project_id, []).append(note)
+        indexed.setdefault(str(project_id), []).append(note)
     return indexed
 
 
@@ -163,7 +163,7 @@ def build_details(
     *,
     migration_marker: str | None = None,
 ) -> str:
-    notes = indexes['notes_by_item_id'].get(item['id'], [])
+    notes = indexes['notes_by_item_id'].get(str(item['id']), [])
 
     lines: list[str] = []
     if migration_marker:
@@ -196,19 +196,20 @@ def build_payload(
     subtasks_mode: SubtasksMode = 'metadata-only',
     parent_task_path: str | None = None,
 ) -> dict[str, Any]:
-    project = indexes['projects'].get(item.get('project_id'))
+    project = indexes['projects'].get(str(item.get('project_id')))
     label_names = resolve_label_names(item, indexes)
     time_estimate = format_duration_minutes(item.get('duration'))
 
     details = build_details(item, indexes, migration_marker=migration_marker)
+    todoist_id = str(item['id'])
 
     payload: dict[str, Any] = {
         'title': item['content'],
         'status': map_status(bool(item.get('checked'))),
         'priority': map_priority(item.get('priority')),
-        TODOIST_ID_FIELD_KEY: item['id'],
+        TODOIST_ID_FIELD_KEY: todoist_id,
         'customProperties': {
-            TODOIST_ID_FIELD_KEY: item['id'],
+            TODOIST_ID_FIELD_KEY: todoist_id,
         },
     }
 

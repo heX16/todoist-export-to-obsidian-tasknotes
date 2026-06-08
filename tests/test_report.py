@@ -2,51 +2,57 @@
 
 from __future__ import annotations
 
+import json
 import unittest
-from datetime import datetime, timezone
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import testdata  # noqa: F401
 
 import migrate_todoist_to_tasknotes as migrator
 
 
-class TestWriteReport(unittest.TestCase):
-    def test_report_contains_summary_counts(self) -> None:
-        with TemporaryDirectory() as tmp_dir:
-            report_path = Path(tmp_dir) / 'nested' / 'migration_report.md'
-            stats = migrator.MigrationStats(
-                total=4,
-                skipped_deleted=1,
-                skipped_completed=0,
-                skipped_duplicate=0,
-                created=3,
-                failed=0,
-            )
-            started_at = datetime(2026, 6, 8, 10, 0, 0, tzinfo=timezone.utc)
-            finished_at = datetime(2026, 6, 8, 10, 1, 0, tzinfo=timezone.utc)
+class TestReportRender(unittest.TestCase):
+    def test_human_report_contains_summary_counts(self) -> None:
+        stats = migrator.MigrationStats(
+            total=4,
+            skipped_deleted=1,
+            skipped_completed=0,
+            skipped_duplicate=0,
+            created=3,
+            failed=0,
+        )
 
-            migrator.write_report(
-                report_path,
-                started_at=started_at,
-                finished_at=finished_at,
-                stats=stats,
-                dry_run=True,
-                limit=None,
-                subtasks_mode='native-project-link',
-                json_path=Path('tests/todoist_minimal.json'),
-                api_base='http://127.0.0.1:16876',
-            )
+        report = migrator.build_report_data(
+            stats=stats,
+            dry_run=True,
+            limit=None,
+            subtasks_mode='native-project-link',
+            json_path=Path('tests/todoist_minimal.json'),
+            api_base='http://127.0.0.1:16876',
+        )
+        content = migrator.render_report_human(report)
 
-            content = report_path.read_text(encoding='utf-8')
-            self.assertTrue(report_path.is_file())
-            self.assertIn('## Summary', content)
-            self.assertIn('- total: 4', content)
-            self.assertIn('- skipped_deleted: 1', content)
-            self.assertIn('- skipped_completed: 0', content)
-            self.assertIn('- created: 3', content)
-            self.assertIn('- failed: 0', content)
+        self.assertIn('## Summary', content)
+        self.assertIn('- total: 4', content)
+        self.assertIn('- skipped_deleted: 1', content)
+        self.assertIn('- skipped_completed: 0', content)
+        self.assertIn('- created: 3', content)
+        self.assertIn('- failed: 0', content)
+
+    def test_json_report_is_valid_json(self) -> None:
+        stats = migrator.MigrationStats(total=1, created=1)
+
+        report = migrator.build_report_data(
+            stats=stats,
+            dry_run=True,
+            limit=None,
+            subtasks_mode='native-project-link',
+            json_path=Path('tests/todoist_minimal.json'),
+            api_base='http://127.0.0.1:16876',
+        )
+        json_text = migrator.render_report_json(report)
+        parsed = json.loads(json_text)
+        self.assertEqual(parsed['summary']['created'], 1)
 
 
 if __name__ == '__main__':

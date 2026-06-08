@@ -26,7 +26,7 @@ python3 scripts/migrate_todoist_to_tasknotes.py --limit 10
 python3 scripts/migrate_todoist_to_tasknotes.py
 ```
 
-Отчёт каждого прогона: `migration_run_report.md` (в текущей директории запуска)
+Итоговый отчёт каждого прогона печатается в stdout (человеко-читаемый формат по умолчанию, либо JSON).
 
 ## Запуск миграции (коротко)
 
@@ -243,7 +243,7 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 | `--include-deleted` | skip с логом |
 | `--include-completed` | include (`status: done`) |
 | `--subtasks-mode` | `native-project-link` |
-| `--report` | `migration_run_report.md` (в текущей директории запуска) |
+| `--report-format` | `human` (печать отчёта в stdout; варианты: `human`, `json`) |
 
 ## Подводные камни
 
@@ -260,7 +260,6 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 ```
 GPT_info.md           — этот справочник
 HTTP_API.md           — документация TaskNotes API
-migration_run_report.md — отчёт последнего прогона (создаётся скриптом, в cwd)
 ```
 
 ## Статус проекта

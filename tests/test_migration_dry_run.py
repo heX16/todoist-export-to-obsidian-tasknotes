@@ -30,7 +30,7 @@ def _extract_dry_run_payload(output: str, todoist_id: str) -> dict:
     raise ValueError(f'No JSON payload found for todoist id {todoist_id}')
 
 
-def _dry_run_args(report_path: Path, **overrides) -> migrator.Args:
+def _dry_run_args(**overrides) -> migrator.Args:
     base: migrator.Args = {
         'json_path': MINIMAL_FIXTURE_PATH,
         'api_base': 'http://127.0.0.1:16876',
@@ -42,7 +42,7 @@ def _dry_run_args(report_path: Path, **overrides) -> migrator.Args:
         'include_completed': True,
         'stop_on_error': False,
         'subtasks_mode': 'native-project-link',
-        'report': report_path,
+        'report_format': 'human',
     }
     base.update(overrides)
     return base
@@ -61,9 +61,7 @@ class TestMigrationDryRun(unittest.TestCase):
         return exit_code, buffer.getvalue()
 
     def test_dry_run_prints_payload_json_without_api_calls(self) -> None:
-        with TemporaryDirectory() as tmp_dir:
-            report_path = Path(tmp_dir) / 'report.md'
-            exit_code, output = self._run_migrate(_dry_run_args(report_path))
+        exit_code, output = self._run_migrate(_dry_run_args())
 
         self.assertEqual(exit_code, 0)
         self.assertIn('DRY-RUN create: 100', output)
@@ -72,50 +70,36 @@ class TestMigrationDryRun(unittest.TestCase):
         self.assertEqual(payload['title'], 'Parent task')
 
     def test_deleted_items_skipped_by_default(self) -> None:
-        with TemporaryDirectory() as tmp_dir:
-            report_path = Path(tmp_dir) / 'report.md'
-            _, output = self._run_migrate(_dry_run_args(report_path))
+        _, output = self._run_migrate(_dry_run_args())
 
         self.assertIn('SKIP deleted: 103', output)
         self.assertNotIn('DRY-RUN create: 103', output)
 
     def test_completed_items_included_by_default(self) -> None:
-        with TemporaryDirectory() as tmp_dir:
-            report_path = Path(tmp_dir) / 'report.md'
-            _, output = self._run_migrate(_dry_run_args(report_path))
+        _, output = self._run_migrate(_dry_run_args())
 
         self.assertIn('DRY-RUN create: 102', output)
         self.assertNotIn('SKIP completed: 102', output)
 
     def test_completed_items_skipped_when_disabled(self) -> None:
-        with TemporaryDirectory() as tmp_dir:
-            report_path = Path(tmp_dir) / 'report.md'
-            _, output = self._run_migrate(
-                _dry_run_args(report_path, include_completed=False),
-            )
+        _, output = self._run_migrate(_dry_run_args(include_completed=False))
 
         self.assertIn('SKIP completed: 102', output)
         self.assertNotIn('DRY-RUN create: 102', output)
 
     def test_parent_processed_before_child(self) -> None:
-        with TemporaryDirectory() as tmp_dir:
-            report_path = Path(tmp_dir) / 'report.md'
-            _, output = self._run_migrate(_dry_run_args(report_path))
+        _, output = self._run_migrate(_dry_run_args())
 
         parent_pos = output.index('DRY-RUN create: 100')
         child_pos = output.index('DRY-RUN create: 101')
         self.assertLess(parent_pos, child_pos)
 
     def test_dry_run_writes_report_with_summary(self) -> None:
-        with TemporaryDirectory() as tmp_dir:
-            report_path = Path(tmp_dir) / 'migration_run_report.md'
-            self._run_migrate(_dry_run_args(report_path))
+        _, output = self._run_migrate(_dry_run_args())
 
-            content = report_path.read_text(encoding='utf-8')
-            self.assertTrue(report_path.is_file())
-            self.assertIn('## Summary', content)
-            self.assertIn('- skipped_deleted: 1', content)
-            self.assertIn('- created:', content)
+        self.assertIn('## Summary', output)
+        self.assertIn('- skipped_deleted: 1', output)
+        self.assertIn('- created:', output)
 
 
 if __name__ == '__main__':

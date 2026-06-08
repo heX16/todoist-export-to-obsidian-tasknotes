@@ -30,9 +30,6 @@ from todoist_tasknotes_mapping import (  # noqa: E402
     load_json,
 )
 
-
-DEFAULT_REPORT_PATH = Path('migration_run_report.md')
-
 DEFAULT_VAULT_ROOT = Path(__file__).resolve().parent.parent / 'target-obsidian'
 
 USAGE = f'''Migrate Todoist JSON export into TaskNotes via HTTP API.
@@ -60,8 +57,9 @@ Options:
   --subtasks-mode=<mode>              Subtasks handling mode.
                                       One of: native-project-link, metadata-only, parent-project-only
                                       [default: native-project-link]
-  --report=<path>                     Write a markdown report to this path.
-                                      [default: {DEFAULT_REPORT_PATH}]
+  --report-format=<format>            Final report format printed to stdout.
+                                      One of: human, json
+                                      [default: human]
 '''
 
 
@@ -106,6 +104,10 @@ def parse_args(argv: list[str] | None = None) -> Args:
         allowed = ', '.join(sorted(ALLOWED_SUBTASKS_MODES))
         raise SystemExit(f'ERROR: --subtasks-mode must be one of: {allowed}')
 
+    report_format = str(options['--report-format'])
+    if report_format not in ('human', 'json'):
+        raise SystemExit('ERROR: --report-format must be one of: human, json')
+
     return {
         'json_path': Path(options['--json-path']),
         'api_base': str(options['--api-base']),
@@ -117,7 +119,7 @@ def parse_args(argv: list[str] | None = None) -> Args:
         'include_completed': not bool(options['--no-include-completed']),
         'stop_on_error': bool(options['--stop-on-error']),
         'subtasks_mode': cast(SubtasksMode, subtasks_mode),
-        'report': Path(options['--report']),
+        'report_format': report_format,
     }
 
 
@@ -148,63 +150,89 @@ def create_task(
     return False, error_message, body
 
 
-def write_report(
-    report_path: Path,
+def build_report_data(
     *,
-    started_at: datetime,
-    finished_at: datetime,
     stats: MigrationStats,
     dry_run: bool,
     limit: int | None,
     subtasks_mode: SubtasksMode,
     json_path: Path,
     api_base: str,
-) -> None:
-    report_path.parent.mkdir(parents=True, exist_ok=True)
+) -> dict[str, Any]:
     partial = limit is not None
+
+    return {
+        'dry_run': dry_run,
+        'partial_run': partial,
+        'limit': limit,
+        'json_source': str(json_path),
+        'api_base': api_base,
+        'subtasks_mode': subtasks_mode,
+        'summary': {
+            'total': stats.total,
+            'skipped_deleted': stats.skipped_deleted,
+            'skipped_completed': stats.skipped_completed,
+            'skipped_duplicate': stats.skipped_duplicate,
+            'created': stats.created,
+            'failed': stats.failed,
+        },
+        'created_items': list(stats.created_items),
+        'skipped_duplicate_items': list(stats.skipped_duplicate_items),
+        'failed_items': list(stats.failed_items),
+    }
+
+
+def render_report_human(report: dict[str, Any]) -> str:
+    summary = cast(dict[str, Any], report['summary'])
 
     lines = [
         '# Todoist -> TaskNotes migration run report',
         '',
-        f'- Started: {started_at.isoformat()}',
-        f'- Finished: {finished_at.isoformat()}',
-        f'- Dry run: {dry_run}',
-        f'- Partial run: {partial}',
-        f'- Limit: {limit if limit is not None else "none"}',
-        f'- JSON source: `{json_path}`',
-        f'- API base: `{api_base}`',
-        f'- Subtasks mode: `{subtasks_mode}`',
+        f'- Dry run: {report["dry_run"]}',
+        f'- Partial run: {report["partial_run"]}',
+        f'- Limit: {report["limit"] if report["limit"] is not None else "none"}',
+        f'- JSON source: `{report["json_source"]}`',
+        f'- API base: `{report["api_base"]}`',
+        f'- Subtasks mode: `{report["subtasks_mode"]}`',
         '',
         '## Summary',
         '',
-        f'- total: {stats.total}',
-        f'- skipped_deleted: {stats.skipped_deleted}',
-        f'- skipped_completed: {stats.skipped_completed}',
-        f'- skipped_duplicate: {stats.skipped_duplicate}',
-        f'- created: {stats.created}',
-        f'- failed: {stats.failed}',
+        f'- total: {summary["total"]}',
+        f'- skipped_deleted: {summary["skipped_deleted"]}',
+        f'- skipped_completed: {summary["skipped_completed"]}',
+        f'- skipped_duplicate: {summary["skipped_duplicate"]}',
+        f'- created: {summary["created"]}',
+        f'- failed: {summary["failed"]}',
         '',
     ]
 
-    if stats.created_items:
+    created_items = cast(list[dict[str, str]], report['created_items'])
+    skipped_duplicate_items = cast(list[dict[str, str]], report['skipped_duplicate_items'])
+    failed_items = cast(list[dict[str, str]], report['failed_items'])
+
+    if created_items:
         lines.extend(['## Created tasks', ''])
-        for entry in stats.created_items:
+        for entry in created_items:
             lines.append(f'- `{entry["todoist_id"]}` -> `{entry["task_path"]}` ({entry["title"]})')
         lines.append('')
 
-    if stats.skipped_duplicate_items:
+    if skipped_duplicate_items:
         lines.extend(['## Skipped duplicates', ''])
-        for entry in stats.skipped_duplicate_items:
+        for entry in skipped_duplicate_items:
             lines.append(f'- `{entry["todoist_id"]}` already at `{entry["task_path"]}`')
         lines.append('')
 
-    if stats.failed_items:
+    if failed_items:
         lines.extend(['## Failed tasks', ''])
-        for entry in stats.failed_items:
+        for entry in failed_items:
             lines.append(f'- `{entry["todoist_id"]}`: {entry["error"]}')
         lines.append('')
 
-    report_path.write_text('\n'.join(lines), encoding='utf-8')
+    return '\n'.join(lines)
+
+
+def render_report_json(report: dict[str, Any]) -> str:
+    return json.dumps(report, indent=2, ensure_ascii=False)
 
 
 def migrate(args: Args) -> int:
@@ -312,10 +340,7 @@ def migrate(args: Args) -> int:
             break
 
     finished_at = datetime.now(timezone.utc)
-    write_report(
-        args['report'],
-        started_at=started_at,
-        finished_at=finished_at,
+    report = build_report_data(
         stats=stats,
         dry_run=args['dry_run'],
         limit=args['limit'],
@@ -324,14 +349,11 @@ def migrate(args: Args) -> int:
         api_base=args['api_base'],
     )
 
-    print('\n=== Migration summary ===')
-    print(f'total: {stats.total}')
-    print(f'skipped_deleted: {stats.skipped_deleted}')
-    print(f'skipped_completed: {stats.skipped_completed}')
-    print(f'skipped_duplicate: {stats.skipped_duplicate}')
-    print(f'created: {stats.created}')
-    print(f'failed: {stats.failed}')
-    print(f'Report written to: {args["report"]}')
+    report_format = str(args.get('report_format', 'human'))
+    if report_format == 'human':
+        print('\n' + render_report_human(report))
+    elif report_format == 'json':
+        print(render_report_json(report))
 
     return 1 if stats.failed else 0
 
