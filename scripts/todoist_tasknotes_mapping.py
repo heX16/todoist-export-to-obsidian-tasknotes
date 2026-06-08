@@ -12,8 +12,7 @@ from typing import Any
 
 from todoist_projects import parent_project_link, project_wikilink
 
-DEFAULT_API_BASE = 'http://127.0.0.1:16876'
-DEFAULT_API_TOKEN = 'tasknotes-token'
+DEFAULT_API_BASE = 'http://127.0.0.1:8080'
 DEFAULT_JSON_PATH = Path(__file__).resolve().parent.parent / 'source-todoist' / 'todoist.json'
 TODOIST_ID_FIELD_KEY = 'todoist_id'
 

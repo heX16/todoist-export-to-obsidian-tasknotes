@@ -33,8 +33,8 @@ def _extract_dry_run_payload(output: str, todoist_id: str) -> dict:
 def _dry_run_args(**overrides) -> migrator.Args:
     base: migrator.Args = {
         'json_path': MINIMAL_FIXTURE_PATH,
-        'api_base': 'http://127.0.0.1:16876',
-        'api_token': 'tasknotes-token',
+        'api_base': 'http://127.0.0.1:8080',
+        'api_token': 'test-token',
         'vault_root': Path('/tmp/unused-vault'),
         'dry_run': True,
         'limit': None,

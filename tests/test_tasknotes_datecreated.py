@@ -20,16 +20,15 @@ import pytest
 import testdata  # noqa: F401
 
 from tasknotes_api_testlib import (  # noqa: E402
+    TASKNOTES_API_TOKEN_ENV,
     api_is_available,
     create_task,
     delete_task,
+    integration_api_token,
     iso_now_for_title,
     read_task,
 )
-from todoist_tasknotes_mapping import (  # noqa: E402
-    DEFAULT_API_BASE,
-    DEFAULT_API_TOKEN,
-)
+from todoist_tasknotes_mapping import DEFAULT_API_BASE  # noqa: E402
 
 DEFAULT_TEST_DATE_CREATED = '2000-01-02T03:04:05Z'
 
@@ -64,12 +63,15 @@ def verify_date_created_roundtrip(
 
 @pytest.mark.integration
 def test_date_created_preserved_by_api() -> None:
-    if not api_is_available(DEFAULT_API_BASE, DEFAULT_API_TOKEN):
+    api_token = integration_api_token()
+    if api_token is None:
+        pytest.skip(f'{TASKNOTES_API_TOKEN_ENV} is not set')
+    if not api_is_available(DEFAULT_API_BASE, api_token):
         pytest.skip(f'TaskNotes API is not reachable at {DEFAULT_API_BASE}')
 
     requested, stored, _task_path = verify_date_created_roundtrip(
         DEFAULT_API_BASE,
-        DEFAULT_API_TOKEN,
+        api_token,
         date_created=DEFAULT_TEST_DATE_CREATED,
     )
     assert stored == requested, (
@@ -80,7 +82,7 @@ def test_date_created_preserved_by_api() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description='Test TaskNotes dateCreated behavior.')
     parser.add_argument('--api-base', default=DEFAULT_API_BASE)
-    parser.add_argument('--api-token', default=DEFAULT_API_TOKEN)
+    parser.add_argument('--api-token', required=True)
     parser.add_argument(
         '--date-created',
         default=DEFAULT_TEST_DATE_CREATED,

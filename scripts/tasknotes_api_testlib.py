@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -12,6 +13,12 @@ from typing import Any
 from todoist_tasknotes_mapping import api_request
 
 API_HEALTH_TIMEOUT_SECONDS = 2
+TASKNOTES_API_TOKEN_ENV = 'TASKNOTES_API_TOKEN'
+
+
+def integration_api_token() -> str | None:
+    token = os.environ.get(TASKNOTES_API_TOKEN_ENV, '').strip()
+    return token or None
 
 
 def iso_now_for_title() -> str:

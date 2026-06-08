@@ -27,7 +27,7 @@ class TestReportRender(unittest.TestCase):
             dry_run=True,
             limit=None,
             json_path=Path('tests/todoist_minimal.json'),
-            api_base='http://127.0.0.1:16876',
+            api_base='http://127.0.0.1:8080',
         )
         content = migrator.render_report_human(report)
 
@@ -46,7 +46,7 @@ class TestReportRender(unittest.TestCase):
             dry_run=True,
             limit=None,
             json_path=Path('tests/todoist_minimal.json'),
-            api_base='http://127.0.0.1:16876',
+            api_base='http://127.0.0.1:8080',
         )
         json_text = migrator.render_report_json(report)
         parsed = json.loads(json_text)

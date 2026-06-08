@@ -19,7 +19,6 @@ if str(SCRIPT_DIR) not in sys.path:
 from todoist_projects import ensure_project_note_exists, parent_project_link  # noqa: E402
 from todoist_tasknotes_mapping import (  # noqa: E402
     DEFAULT_API_BASE,
-    DEFAULT_API_TOKEN,
     DEFAULT_JSON_PATH,
     api_request,
     build_indexes,
@@ -33,7 +32,7 @@ DEFAULT_VAULT_ROOT = Path(__file__).resolve().parent.parent / 'target-obsidian'
 USAGE = f'''Migrate Todoist JSON export into TaskNotes via HTTP API.
 
 Usage:
-  migrate_todoist_to_tasknotes.py [options]
+  migrate_todoist_to_tasknotes.py --api-token=<token> [options]
   migrate_todoist_to_tasknotes.py (-h | --help)
 
 Options:
@@ -42,8 +41,7 @@ Options:
                                       [default: {DEFAULT_JSON_PATH}]
   --api-base=<url>                    TaskNotes API base URL.
                                       [default: {DEFAULT_API_BASE}]
-  --api-token=<token>                 TaskNotes API token.
-                                      [default: {DEFAULT_API_TOKEN}]
+  --api-token=<token>                 TaskNotes API token (required).
   --vault-root=<path>                 Obsidian vault root directory (for creating project notes directly).
                                       [default: {DEFAULT_VAULT_ROOT}]
   --dry-run                           Do not call API; print would-be payloads.
@@ -89,10 +87,14 @@ def parse_args(argv: list[str] | None = None) -> Args:
     if report_format not in ('human', 'json'):
         raise SystemExit('ERROR: --report-format must be one of: human, json')
 
+    api_token = options['--api-token']
+    if not api_token:
+        raise SystemExit('ERROR: --api-token is required')
+
     return {
         'json_path': Path(options['--json-path']),
         'api_base': str(options['--api-base']),
-        'api_token': str(options['--api-token']),
+        'api_token': str(api_token),
         'vault_root': Path(options['--vault-root']),
         'dry_run': bool(options['--dry-run']),
         'limit': limit,

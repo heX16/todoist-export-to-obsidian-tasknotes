@@ -20,16 +20,15 @@ import pytest
 import testdata  # noqa: F401
 
 from tasknotes_api_testlib import (  # noqa: E402
+    TASKNOTES_API_TOKEN_ENV,
     api_is_available,
     create_task,
     delete_task,
+    integration_api_token,
     iso_now_for_title,
     read_task,
 )
-from todoist_tasknotes_mapping import (  # noqa: E402
-    DEFAULT_API_BASE,
-    DEFAULT_API_TOKEN,
-)
+from todoist_tasknotes_mapping import DEFAULT_API_BASE  # noqa: E402
 
 SCHEDULED_SUPPRESS_VALUE = ''
 
@@ -68,12 +67,15 @@ def verify_scheduled_suppressed_roundtrip(
 
 @pytest.mark.integration
 def test_scheduled_empty_string_not_persisted() -> None:
-    if not api_is_available(DEFAULT_API_BASE, DEFAULT_API_TOKEN):
+    api_token = integration_api_token()
+    if api_token is None:
+        pytest.skip(f'{TASKNOTES_API_TOKEN_ENV} is not set')
+    if not api_is_available(DEFAULT_API_BASE, api_token):
         pytest.skip(f'TaskNotes API is not reachable at {DEFAULT_API_BASE}')
 
     task_data, _task_path = verify_scheduled_suppressed_roundtrip(
         DEFAULT_API_BASE,
-        DEFAULT_API_TOKEN,
+        api_token,
     )
     assert scheduled_is_absent(task_data), (
         'scheduled should be absent when sent as "", '
@@ -86,7 +88,7 @@ def main() -> int:
         description='Test TaskNotes scheduled="" behavior.',
     )
     parser.add_argument('--api-base', default=DEFAULT_API_BASE)
-    parser.add_argument('--api-token', default=DEFAULT_API_TOKEN)
+    parser.add_argument('--api-token', required=True)
     parser.add_argument(
         '--title',
         default=None,
