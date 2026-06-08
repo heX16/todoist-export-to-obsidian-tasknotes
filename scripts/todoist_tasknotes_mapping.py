@@ -204,6 +204,7 @@ def build_payload(
         'title': item['content'],
         'status': map_status(bool(item.get('checked'))),
         'priority': map_priority(item.get('priority')),
+        'scheduled': '',
         TODOIST_ID_FIELD_KEY: todoist_id,
         'customProperties': {
             TODOIST_ID_FIELD_KEY: todoist_id,

@@ -29,6 +29,7 @@ class TestPayloadMapping(unittest.TestCase):
         self.assertEqual(payload['title'], 'Parent task')
         self.assertEqual(payload['status'], 'open')
         self.assertEqual(payload['priority'], 'normal')
+        self.assertEqual(payload['scheduled'], '')
         self.assertEqual(payload['due'], '2026-06-10')
         self.assertEqual(payload['tags'], ['tag1'])
         self.assertEqual(payload['projects'], ['[[Work／Project]]'])
@@ -53,12 +54,14 @@ class TestPayloadMapping(unittest.TestCase):
         )
 
         self.assertEqual(payload['projects'], ['[[Parent task]]'])
+        self.assertEqual(payload['scheduled'], '')
 
     def test_item_101_subtask_omits_projects_when_parent_unknown(self) -> None:
         item = self.items_by_id['101']
         payload = build_payload(item, self.indexes)
 
         self.assertNotIn('projects', payload)
+        self.assertEqual(payload['scheduled'], '')
 
 
 if __name__ == '__main__':
