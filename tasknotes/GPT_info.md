@@ -12,6 +12,11 @@
 - Не запускать справочные репозитории в `documentation/` — только читать
 - Python: `python3`, комментарии и commit messages на английском, строки в одинарных кавычках
 
+## Связанные репозитории (справочные)
+
+- [`darekkay/todoist-export`](https://github.com/darekkay/todoist-export)
+- [`singofwalls/Todoist-to-Markdown`](https://github.com/singofwalls/Todoist-to-Markdown)
+
 ## Скрипты
 
 | Скрипт | Назначение |
