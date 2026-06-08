@@ -1,0 +1,12 @@
+_other/*
+
+# Python
+__pycache__
+.venv/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
