@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from docopt import docopt
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -34,6 +35,35 @@ DEFAULT_REPORT_PATH = Path('migration_run_report.md')
 
 DEFAULT_VAULT_ROOT = Path(__file__).resolve().parent.parent / 'target-obsidian'
 
+USAGE = f'''Migrate Todoist JSON export into TaskNotes via HTTP API.
+
+Usage:
+  migrate_todoist_to_tasknotes.py [options]
+  migrate_todoist_to_tasknotes.py (-h | --help)
+
+Options:
+  -h --help                           Show this help.
+  --json-path=<path>                  Path to Todoist JSON export.
+                                      [default: {DEFAULT_JSON_PATH}]
+  --api-base=<url>                    TaskNotes API base URL.
+                                      [default: {DEFAULT_API_BASE}]
+  --api-token=<token>                 TaskNotes API token.
+                                      [default: {DEFAULT_API_TOKEN}]
+  --vault-root=<path>                 Obsidian vault root directory (for creating project notes directly).
+                                      [default: {DEFAULT_VAULT_ROOT}]
+  --dry-run                           Do not call API; print would-be payloads.
+  --limit=<n>                         Process at most N tasks (parents-first).
+  --include-deleted                   Include deleted Todoist items.
+  --include-completed                 Include completed Todoist items (default).
+  --no-include-completed              Exclude completed Todoist items.
+  --stop-on-error                     Stop at first failed task creation.
+  --subtasks-mode=<mode>              Subtasks handling mode.
+                                      One of: native-project-link, metadata-only, parent-project-only
+                                      [default: native-project-link]
+  --report=<path>                     Write a markdown report to this path.
+                                      [default: {DEFAULT_REPORT_PATH}]
+'''
+
 
 @dataclass
 class MigrationStats:
@@ -46,6 +76,49 @@ class MigrationStats:
     created_items: list[dict[str, str]] = field(default_factory=list)
     skipped_duplicate_items: list[dict[str, str]] = field(default_factory=list)
     failed_items: list[dict[str, str]] = field(default_factory=list)
+
+
+Args = dict[str, Any]
+
+
+ALLOWED_SUBTASKS_MODES: set[str] = {
+    'native-project-link',
+    'metadata-only',
+    'parent-project-only',
+}
+
+
+def _parse_int(value: str | None, *, option_name: str) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise SystemExit(f'ERROR: {option_name} must be an integer, got {value!r}') from exc
+
+
+def parse_args(argv: list[str] | None = None) -> Args:
+    options = docopt(USAGE, argv=argv)
+
+    limit = _parse_int(options['--limit'], option_name='--limit')
+    subtasks_mode = str(options['--subtasks-mode'])
+    if subtasks_mode not in ALLOWED_SUBTASKS_MODES:
+        allowed = ', '.join(sorted(ALLOWED_SUBTASKS_MODES))
+        raise SystemExit(f'ERROR: --subtasks-mode must be one of: {allowed}')
+
+    return {
+        'json_path': Path(options['--json-path']),
+        'api_base': str(options['--api-base']),
+        'api_token': str(options['--api-token']),
+        'vault_root': Path(options['--vault-root']),
+        'dry_run': bool(options['--dry-run']),
+        'limit': limit,
+        'include_deleted': bool(options['--include-deleted']),
+        'include_completed': not bool(options['--no-include-completed']),
+        'stop_on_error': bool(options['--stop-on-error']),
+        'subtasks_mode': cast(SubtasksMode, subtasks_mode),
+        'report': Path(options['--report']),
+    }
 
 
 def should_skip_item(
@@ -134,9 +207,9 @@ def write_report(
     report_path.write_text('\n'.join(lines), encoding='utf-8')
 
 
-def migrate(args: argparse.Namespace) -> int:
+def migrate(args: Args) -> int:
     started_at = datetime.now(timezone.utc)
-    data = load_json(args.json_path)
+    data = load_json(args['json_path'])
     indexes = build_indexes(data)
     items = list(indexes['items'].values())
     ordered_items = compute_creation_order(items)
@@ -145,27 +218,27 @@ def migrate(args: argparse.Namespace) -> int:
     todoist_id_cache: dict[str, str] = {}
     created_paths: dict[str, str] = {}
 
-    if not args.dry_run:
-        health_status, health_body = api_request('GET', f'{args.api_base}/api/health', args.api_token)
+    if not args['dry_run']:
+        health_status, health_body = api_request('GET', f'{args["api_base"]}/api/health', args["api_token"])
         if health_status != 200 or not health_body.get('success'):
             print('ERROR: TaskNotes API health check failed.', file=sys.stderr)
             print(json.dumps(health_body, indent=2, ensure_ascii=False), file=sys.stderr)
             return 1
 
         print('Building todoist_id cache from existing TaskNotes tasks...')
-        todoist_id_cache = build_todoist_id_cache(args.api_base, args.api_token)
+        todoist_id_cache = build_todoist_id_cache(args['api_base'], args['api_token'])
         print(f'Found {len(todoist_id_cache)} previously imported tasks.')
 
     processed = 0
     for item in ordered_items:
-        if args.limit is not None and processed >= args.limit:
+        if args['limit'] is not None and processed >= args['limit']:
             break
 
         todoist_id = item['id']
         skip_reason = should_skip_item(
             item,
-            include_deleted=args.include_deleted,
-            include_completed=args.include_completed,
+            include_deleted=args['include_deleted'],
+            include_completed=args['include_completed'],
         )
         if skip_reason == 'deleted':
             stats.skipped_deleted += 1
@@ -189,17 +262,17 @@ def migrate(args: argparse.Namespace) -> int:
 
         parent_id = item.get('parent_id')
         parent_task_path = created_paths.get(parent_id) if parent_id else None
-        if parent_id and args.subtasks_mode != 'metadata-only' and not parent_task_path:
+        if parent_id and args['subtasks_mode'] != 'metadata-only' and not parent_task_path:
             parent_task_path = todoist_id_cache.get(parent_id)
 
         payload = build_payload(
             item,
             indexes,
-            subtasks_mode=args.subtasks_mode,
+            subtasks_mode=args['subtasks_mode'],
             parent_task_path=parent_task_path,
         )
 
-        if args.dry_run:
+        if args['dry_run']:
             stats.created += 1
             processed += 1
             print(f'DRY-RUN create: {todoist_id} ({item.get("content", "")})')
@@ -209,9 +282,9 @@ def migrate(args: argparse.Namespace) -> int:
         project = indexes['projects'].get(item.get('project_id'))
         project_name = project.get('name') if isinstance(project, dict) else None
         if project_name:
-            ensure_project_note_exists(args.vault_root, str(project_name))
+            ensure_project_note_exists(args['vault_root'], str(project_name))
 
-        success, result, body = create_task(args.api_base, args.api_token, payload)
+        success, result, body = create_task(args['api_base'], args['api_token'], payload)
         if success:
             stats.created += 1
             processed += 1
@@ -231,20 +304,20 @@ def migrate(args: argparse.Namespace) -> int:
             'error': result,
         })
         print(f'FAILED: {todoist_id}: {result}', file=sys.stderr)
-        if args.stop_on_error:
+        if args['stop_on_error']:
             break
 
     finished_at = datetime.now(timezone.utc)
     write_report(
-        args.report,
+        args['report'],
         started_at=started_at,
         finished_at=finished_at,
         stats=stats,
-        dry_run=args.dry_run,
-        limit=args.limit,
-        subtasks_mode=args.subtasks_mode,
-        json_path=args.json_path,
-        api_base=args.api_base,
+        dry_run=args['dry_run'],
+        limit=args['limit'],
+        subtasks_mode=args['subtasks_mode'],
+        json_path=args['json_path'],
+        api_base=args['api_base'],
     )
 
     print('\n=== Migration summary ===')
@@ -254,35 +327,13 @@ def migrate(args: argparse.Namespace) -> int:
     print(f'skipped_duplicate: {stats.skipped_duplicate}')
     print(f'created: {stats.created}')
     print(f'failed: {stats.failed}')
-    print(f'Report written to: {args.report}')
+    print(f'Report written to: {args["report"]}')
 
     return 1 if stats.failed else 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Migrate Todoist JSON export into TaskNotes.')
-    parser.add_argument('--json-path', type=Path, default=DEFAULT_JSON_PATH)
-    parser.add_argument('--api-base', default=DEFAULT_API_BASE)
-    parser.add_argument('--api-token', default=DEFAULT_API_TOKEN)
-    parser.add_argument(
-        '--vault-root',
-        type=Path,
-        default=DEFAULT_VAULT_ROOT,
-        help='Obsidian vault root directory (for creating project notes directly).',
-    )
-    parser.add_argument('--dry-run', action='store_true')
-    parser.add_argument('--limit', type=int, default=None)
-    parser.add_argument('--include-deleted', action='store_true')
-    parser.add_argument('--include-completed', action='store_true', default=True)
-    parser.add_argument('--no-include-completed', action='store_false', dest='include_completed')
-    parser.add_argument('--stop-on-error', action='store_true')
-    parser.add_argument(
-        '--subtasks-mode',
-        choices=['native-project-link', 'metadata-only', 'parent-project-only'],
-        default='native-project-link',
-    )
-    parser.add_argument('--report', type=Path, default=DEFAULT_REPORT_PATH)
-    args = parser.parse_args()
+    args = parse_args()
     return migrate(args)
 
 
