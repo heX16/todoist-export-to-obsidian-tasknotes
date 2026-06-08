@@ -1,5 +1,7 @@
 # Todoist to Obsidian TaskNotes
 
+English | [Русский](README_RUS.md)
+
 Migrate tasks from a [Todoist JSON export](https://github.com/darekkay/todoist-export)
 into an Obsidian vault that uses the
 [TaskNotes](https://github.com/callumalpass/tasknotes) plugin.
