@@ -36,6 +36,22 @@ class TestParseArgs(unittest.TestCase):
         args = migrator.parse_args(['--api-token=test-token', '--no-include-completed'])
         self.assertFalse(args['include_completed'])
 
+    def test_change_obsidian_options_without_api_token(self) -> None:
+        args = migrator.parse_args(['--change-obsidian-options=1'])
+        self.assertTrue(args['change_obsidian_options'])
+        self.assertIsNone(args['api_token'])
+
+    def test_change_obsidian_options_false_requires_api_token(self) -> None:
+        with self.assertRaises(SystemExit) as ctx:
+            migrator.parse_args(['--change-obsidian-options=0'])
+        self.assertIn('ERROR: --api-token is required', str(ctx.exception))
+
+    def test_change_obsidian_options_parses_truthy_values(self) -> None:
+        for value in ('1', 'true', 'yes'):
+            with self.subTest(value=value):
+                args = migrator.parse_args([f'--change-obsidian-options={value}'])
+                self.assertTrue(args['change_obsidian_options'])
+
 
 if __name__ == '__main__':
     unittest.main()

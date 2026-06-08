@@ -17,6 +17,10 @@ SCRIPTS_DIR = REPO_ROOT / 'scripts'
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+from tasknotes_obsidian_config import (  # noqa: E402
+    apply_tasknotes_obsidian_config,
+    load_api_auth_token,
+)
 from todoist_projects import ensure_project_note_exists, parent_project_link  # noqa: E402
 from todoist_tasknotes_mapping import (  # noqa: E402
     DEFAULT_API_BASE,
@@ -34,6 +38,7 @@ USAGE = f'''Migrate Todoist JSON export into TaskNotes via HTTP API.
 
 Usage:
   migrate_todoist_to_tasknotes.py --api-token=<token> [options]
+  migrate_todoist_to_tasknotes.py --change-obsidian-options=1 [options]
   migrate_todoist_to_tasknotes.py (-h | --help)
 
 Options:
@@ -42,9 +47,11 @@ Options:
                                       [default: {DEFAULT_JSON_PATH}]
   --api-base=<url>                    TaskNotes API base URL.
                                       [default: {DEFAULT_API_BASE}]
-  --api-token=<token>                 TaskNotes API token (required).
+  --api-token=<token>                 TaskNotes API token (optional with --change-obsidian-options=1).
   --vault-root=<path>                 Obsidian vault root directory (for creating project notes directly).
                                       [default: {DEFAULT_VAULT_ROOT}]
+  --change-obsidian-options=<n>       Update TaskNotes data.json (userFields, HTTP API).
+                                      [default: 0]
   --dry-run                           Do not call API; print would-be payloads.
   --limit=<n>                         Process at most N new task creations.
   --include-deleted                   Include deleted Todoist items.
@@ -79,24 +86,42 @@ def _parse_int(value: str | None, *, option_name: str) -> int | None:
         raise SystemExit(f'ERROR: {option_name} must be an integer, got {value!r}') from exc
 
 
+def _parse_flag(value: str | None, *, option_name: str) -> bool:
+    if value is None:
+        return False
+    normalized = str(value).strip().lower()
+    if normalized in ('1', 'true', 'yes'):
+        return True
+    if normalized in ('0', 'false', 'no', ''):
+        return False
+    raise SystemExit(
+        f'ERROR: {option_name} must be 0/1 or true/false, got {value!r}',
+    )
+
+
 def parse_args(argv: list[str] | None = None) -> Args:
     options = docopt(USAGE, argv=argv)
 
     limit = _parse_int(options['--limit'], option_name='--limit')
+    change_obsidian_options = _parse_flag(
+        options['--change-obsidian-options'],
+        option_name='--change-obsidian-options',
+    )
 
     report_format = str(options['--report-format'])
     if report_format not in ('human', 'json'):
         raise SystemExit('ERROR: --report-format must be one of: human, json')
 
     api_token = options['--api-token']
-    if not api_token:
+    if not api_token and not change_obsidian_options:
         raise SystemExit('ERROR: --api-token is required')
 
     return {
         'json_path': Path(options['--json-path']),
         'api_base': str(options['--api-base']),
-        'api_token': str(api_token),
+        'api_token': str(api_token) if api_token else None,
         'vault_root': Path(options['--vault-root']),
+        'change_obsidian_options': change_obsidian_options,
         'dry_run': bool(options['--dry-run']),
         'limit': limit,
         'include_deleted': bool(options['--include-deleted']),
@@ -479,6 +504,20 @@ def migrate(args: Args) -> int:
 
 def main() -> int:
     args = parse_args()
+
+    if args['change_obsidian_options']:
+        apply_tasknotes_obsidian_config(
+            args['vault_root'],
+            api_token=args['api_token'],
+            api_base=args['api_base'],
+        )
+
+    if args['api_token'] is None and args['change_obsidian_options']:
+        args['api_token'] = load_api_auth_token(args['vault_root'])
+
+    if args['api_token'] is None:
+        return 0
+
     return migrate(args)
 
 

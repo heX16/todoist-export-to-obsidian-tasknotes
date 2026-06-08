@@ -102,22 +102,20 @@ Enum-значения `status` и `priority` сверять с текущим va
 
 ### Кастомное поле `todoist_id`
 
-Для идемпотентности в vault должен быть настроен user field. Через UI:
+Для идемпотентности в vault должен быть настроен user field `todoist_id`.
 
-`Settings -> TaskNotes -> Task Properties -> User Fields` — добавить поле **Todoist ID** с key `todoist_id`, type `text`.
+Автоматически (рекомендуется): `--change-obsidian-options=1` — правит
+`<vault>/.obsidian/plugins/tasknotes/data.json` (добавляет `userFields`,
+включает `enableAPI`, синхронизирует `apiPort` из `--api-base`). Для миграции
+`apiAuthToken` читается из `data.json`, если `--api-token` не передан;
+`--api-token` переопределяет сохранённое значение и записывается в config.
 
-Или вручную в `<vault>/.obsidian/plugins/tasknotes/data.json`, массив `userFields`:
-
-```json
-"userFields": [
-  {
-    "id": "todoist-id",
-    "displayName": "Todoist ID",
-    "key": "todoist_id",
-    "type": "text"
-  }
-]
+```bash
+python migrate_todoist_to_tasknotes.py --change-obsidian-options=1 --vault-root=<vault>
 ```
+
+Вручную через UI: `Settings -> TaskNotes -> Task Properties -> User Fields` —
+поле **Todoist ID**, key `todoist_id`, type `text`.
 
 После изменения user fields перезагрузить TaskNotes (disable/enable plugin или restart Obsidian).
 
@@ -235,6 +233,7 @@ Body (`details`): только описание из Todoist (и `## Todoist not
 | `--api-base` | `http://127.0.0.1:16876` |
 | `--api-token` | `tasknotes-token` |
 | `--vault-root` | `target-obsidian` (создание `<Project>.md` в корне vault) |
+| `--change-obsidian-options` | `0` (при `1` — правка `data.json`; без `--api-token` только setup) |
 | `--include-deleted` | skip с логом |
 | `--include-completed` | include (`status: done`) |
 | `--report-format` | `human` (печать отчёта в stdout; варианты: `human`, `json`) |

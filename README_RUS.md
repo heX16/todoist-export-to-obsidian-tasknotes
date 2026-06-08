@@ -38,32 +38,27 @@ python -m pip install -r requirements.txt
 
 ## Настройка TaskNotes
 
-Запустите Obsidian, откройте целевой vault и включите HTTP API TaskNotes:
+Скрипт может настроить TaskNotes автоматически. Перед запуском лучше закрыть
+Obsidian, чтобы плагин не перезаписал `data.json` во время работы скрипта.
 
-```text
-Settings -> TaskNotes -> Integrations -> HTTP API
+Настройка TaskNotes и миграция одной командой. Если `--api-token` не передан,
+скрипт берёт `apiAuthToken` из `data.json`; `--api-token` нужен только чтобы
+переопределить сохранённое значение:
+
+```bash
+python migrate_todoist_to_tasknotes.py --change-obsidian-options=1 --vault-root=<vault>
 ```
 
-На том же экране настроек укажите в поле **API authentication token**
-произвольную строку (например, `token`). То же значение передайте в
-`--api-token` при запуске скрипта миграции.
+Только настройка vault (без миграции), если в `data.json` нет `apiAuthToken` и
+`--api-token` не передан.
 
-Для идемпотентности добавьте user field: `Settings -> TaskNotes -> Task Properties ->
-User Fields` — **Todoist ID**, key `todoist_id`, type `text`. Или вручную в
-`.obsidian/plugins/tasknotes/data.json`:
+Резервная копия сохраняется в `.obsidian/plugins/tasknotes/data.json.bak`.
+После изменения user fields перезагрузите TaskNotes (disable/enable плагина
+или restart Obsidian).
 
-```json
-"userFields": [
-  {
-    "id": "todoist-id",
-    "displayName": "Todoist ID",
-    "key": "todoist_id",
-    "type": "text"
-  }
-]
-```
-
-После изменения user fields перезагрузите TaskNotes.
+Ручная настройка по-прежнему возможна: `Settings -> TaskNotes -> Integrations
+-> HTTP API`, поле **API authentication token**, и user field **Todoist ID**
+с key `todoist_id` в `Settings -> TaskNotes -> Task Properties -> User Fields`.
 
 ## Использование
 
@@ -81,8 +76,9 @@ python migrate_todoist_to_tasknotes.py --api-token=<token>
 ```text
 --json-path=<path>           Путь к JSON-экспорту Todoist.
 --api-base=<url>             Базовый URL API TaskNotes (по умолчанию: http://127.0.0.1:8080).
---api-token=<token>          Токен API TaskNotes (обязателен).
+--api-token=<token>          Токен API TaskNotes (необязателен с --change-obsidian-options=1, если есть в data.json).
 --vault-root=<path>          Корень vault Obsidian для заметок проектов.
+--change-obsidian-options=<n>  Обновить TaskNotes data.json (userFields, HTTP API). [0]
 --dry-run                    Печатать payload-ы без вызова API.
 --limit=<n>                  Создать не более N новых задач.
 --include-deleted            Включить удалённые элементы Todoist.
