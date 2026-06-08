@@ -53,19 +53,19 @@ After changing TaskNotes user fields, reload the plugin or restart Obsidian.
 Run a dry run first to inspect the payloads without writing anything:
 
 ```bash
-python scripts/migrate_todoist_to_tasknotes.py --api-token=<token> --dry-run --limit 5
+python migrate_todoist_to_tasknotes.py --api-token=<token> --dry-run --limit 5
 ```
 
 Run a small real migration:
 
 ```bash
-python scripts/migrate_todoist_to_tasknotes.py --api-token=<token> --limit 10
+python migrate_todoist_to_tasknotes.py --api-token=<token> --limit 10
 ```
 
 Run the full migration:
 
 ```bash
-python scripts/migrate_todoist_to_tasknotes.py --api-token=<token>
+python migrate_todoist_to_tasknotes.py --api-token=<token>
 ```
 
 Run the migration again to verify idempotency. A successful repeat run should
@@ -136,8 +136,8 @@ pytest -m integration
 ## Project Structure
 
 ```text
+migrate_todoist_to_tasknotes.py     Full migration CLI.
 scripts/
-  migrate_todoist_to_tasknotes.py   Full migration CLI.
   todoist_tasknotes_mapping.py      Mapping and TaskNotes API helpers.
   todoist_projects.py               Project note and wiki-link helpers.
 tests/                              Unit and integration tests.

@@ -22,13 +22,13 @@
 | Скрипт | Назначение |
 |---|---|
 | `scripts/todoist_tasknotes_mapping.py` | Общий маппинг, HTTP-клиент, идемпотентность |
-| `scripts/migrate_todoist_to_tasknotes.py` | Полная миграция |
+| `migrate_todoist_to_tasknotes.py` | Полная миграция |
 | `migrate_full.sh` | Полный прогон миграции (обёртка) |
 
 ```bash
-python3 scripts/migrate_todoist_to_tasknotes.py --dry-run --limit 5
-python3 scripts/migrate_todoist_to_tasknotes.py --limit 10
-python3 scripts/migrate_todoist_to_tasknotes.py
+python3 migrate_todoist_to_tasknotes.py --dry-run --limit 5
+python3 migrate_todoist_to_tasknotes.py --limit 10
+python3 migrate_todoist_to_tasknotes.py
 ```
 
 Итоговый отчёт каждого прогона печатается в stdout (человеко-читаемый формат по умолчанию, либо JSON).
@@ -47,25 +47,25 @@ python3 scripts/migrate_todoist_to_tasknotes.py
 1. Dry-run (проверить payload-ы без записи):
 
 ```bash
-python3 scripts/migrate_todoist_to_tasknotes.py --dry-run --limit 5
+python3 migrate_todoist_to_tasknotes.py --dry-run --limit 5
 ```
 
 2. Пробный реальный запуск (создать 10 новых задач):
 
 ```bash
-python3 scripts/migrate_todoist_to_tasknotes.py --limit 10
+python3 migrate_todoist_to_tasknotes.py --limit 10
 ```
 
 3. Полный прогон:
 
 ```bash
-python3 scripts/migrate_todoist_to_tasknotes.py
+python3 migrate_todoist_to_tasknotes.py
 ```
 
 4. Идемпотентность (повторный прогон должен дать `created: 0`, всё уйдёт в `skipped_duplicate`):
 
 ```bash
-python3 scripts/migrate_todoist_to_tasknotes.py
+python3 migrate_todoist_to_tasknotes.py
 ```
 
 ### Проекты (Project notes)

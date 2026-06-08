@@ -12,9 +12,10 @@ from typing import Any, TextIO, cast
 
 from docopt import docopt
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+REPO_ROOT = Path(__file__).resolve().parent
+SCRIPTS_DIR = REPO_ROOT / 'scripts'
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 
 from todoist_projects import ensure_project_note_exists, parent_project_link  # noqa: E402
 from todoist_tasknotes_mapping import (  # noqa: E402
@@ -27,7 +28,7 @@ from todoist_tasknotes_mapping import (  # noqa: E402
     load_json,
 )
 
-DEFAULT_VAULT_ROOT = Path(__file__).resolve().parent.parent / 'target-obsidian'
+DEFAULT_VAULT_ROOT = REPO_ROOT / 'target-obsidian'
 
 USAGE = f'''Migrate Todoist JSON export into TaskNotes via HTTP API.
 
