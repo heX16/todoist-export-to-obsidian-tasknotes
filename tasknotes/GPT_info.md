@@ -65,7 +65,8 @@ python3 scripts/migrate_todoist_to_tasknotes.py
 
 ### Проекты (Project notes)
 
-- Каждая задача получает `projects: [<Todoist project name>]` (и, для сабтасков в режиме `native-project-link`, ещё wiki-link на родителя).
+- Корневые задачи получают `projects: [<Todoist project name>]`.
+- Сабтаски получают в `projects` только wiki-link на родителя (без ссылки на проект).
 - При реальном запуске мигратор **создаёт** в корне vault файл `<Project>.md`, если его ещё нет.
 - Vault root можно задать через `--vault-root` (по умолчанию `target-obsidian/`).
 
@@ -133,7 +134,7 @@ todoist_id: 6c2pWG4XgMCXPhM8
 | `duration` | `timeEstimate` | минуты (minute/hour/day) |
 | `id` | `customProperties.todoist_id` | идемпотентность |
 | `added_at` | `dateCreated` | ISO datetime, дата создания задачи |
-| `parent_id` | `projects[]` wiki-link | режим `native-project-link` (default) |
+| `parent_id` | `projects[]` wiki-link на родителя | только parent link, без project link |
 | `notes[]` | `details` | секция `## Todoist notes`, если есть |
 
 **Не переносится** (осознанно):
@@ -148,8 +149,9 @@ todoist_id: 6c2pWG4XgMCXPhM8
 
 Режим по умолчанию: `native-project-link`
 
-- child получает `projects: [TodoistProject, "[[parent-basename]]"]`
-- порядок создания: parents-first (`compute_creation_order()`)
+- child получает `projects: ["[[parent-basename]]"]` (без ссылки на Todoist-проект)
+- порядок создания не важен: мигратор делает два прохода (create → attach parent link)
+- если родитель ещё не известен при создании, `projects` опускается и дополняется во втором проходе
 
 Другие режимы: `--subtasks-mode metadata-only`, `--subtasks-mode parent-project-only`
 

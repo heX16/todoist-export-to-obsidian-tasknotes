@@ -87,13 +87,6 @@ class TestMigrationDryRun(unittest.TestCase):
         self.assertIn('SKIP completed: 102', output)
         self.assertNotIn('DRY-RUN create: 102', output)
 
-    def test_parent_processed_before_child(self) -> None:
-        _, output = self._run_migrate(_dry_run_args())
-
-        parent_pos = output.index('DRY-RUN create: 100')
-        child_pos = output.index('DRY-RUN create: 101')
-        self.assertLess(parent_pos, child_pos)
-
     def test_dry_run_writes_report_with_summary(self) -> None:
         _, output = self._run_migrate(_dry_run_args())
 

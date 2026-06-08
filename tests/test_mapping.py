@@ -11,7 +11,6 @@ from todoist_tasknotes_mapping import (
     build_details,
     build_indexes,
     build_payload,
-    compute_creation_order,
     load_json,
 )
 
@@ -49,7 +48,7 @@ class TestPayloadMapping(unittest.TestCase):
         self.assertIn('## Todoist notes', details)
         self.assertIn('A note for the parent task', details)
 
-    def test_item_101_native_project_link_includes_parent_wikilink(self) -> None:
+    def test_item_101_subtask_includes_only_parent_wikilink(self) -> None:
         item = self.items_by_id['101']
         payload = build_payload(
             item,
@@ -58,16 +57,17 @@ class TestPayloadMapping(unittest.TestCase):
             parent_task_path='Tasks/Parent task.md',
         )
 
-        self.assertEqual(
-            payload['projects'],
-            ['[[Work／Project]]', '[[Parent task]]'],
+        self.assertEqual(payload['projects'], ['[[Parent task]]'])
+
+    def test_item_101_subtask_omits_projects_when_parent_unknown(self) -> None:
+        item = self.items_by_id['101']
+        payload = build_payload(
+            item,
+            self.indexes,
+            subtasks_mode='native-project-link',
         )
 
-    def test_parent_first_creation_order(self) -> None:
-        ordered = compute_creation_order(list(self.items_by_id.values()))
-        ordered_ids = [item['id'] for item in ordered]
-
-        self.assertLess(ordered_ids.index('100'), ordered_ids.index('101'))
+        self.assertNotIn('projects', payload)
 
 
 if __name__ == '__main__':

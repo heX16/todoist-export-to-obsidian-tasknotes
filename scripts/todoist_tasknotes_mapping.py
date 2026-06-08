@@ -244,48 +244,6 @@ def build_payload(
     return payload
 
 
-def compute_creation_order(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return items in parents-first order, stable by child_order then added_at."""
-    items_by_id = {item['id']: item for item in items}
-    children_by_parent: dict[str, list[dict[str, Any]]] = {}
-    roots: list[dict[str, Any]] = []
-
-    for item in items:
-        parent_id = item.get('parent_id')
-        if parent_id and parent_id in items_by_id:
-            children_by_parent.setdefault(parent_id, []).append(item)
-        else:
-            roots.append(item)
-
-    def sort_key(task: dict[str, Any]) -> tuple[int, str]:
-        return (task.get('child_order') or 0, task.get('added_at') or '')
-
-    roots.sort(key=sort_key)
-    for child_list in children_by_parent.values():
-        child_list.sort(key=sort_key)
-
-    ordered: list[dict[str, Any]] = []
-    visited: set[str] = set()
-
-    def visit(task: dict[str, Any]) -> None:
-        task_id = task['id']
-        if task_id in visited:
-            return
-        visited.add(task_id)
-        ordered.append(task)
-        for child in children_by_parent.get(task_id, []):
-            visit(child)
-
-    for root in roots:
-        visit(root)
-
-    for item in items:
-        if item['id'] not in visited:
-            visit(item)
-
-    return ordered
-
-
 def api_request(
     method: str,
     url: str,

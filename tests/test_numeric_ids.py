@@ -11,7 +11,6 @@ from todoist_tasknotes_mapping import (
     build_details,
     build_indexes,
     build_payload,
-    compute_creation_order,
     load_json,
 )
 
@@ -38,11 +37,6 @@ class TestNumericTodoistIds(unittest.TestCase):
         notes = self.indexes['notes_by_item_id'].get('100', [])
         self.assertEqual(len(notes), 1)
         self.assertEqual(notes[0]['content'], 'A note for the parent task')
-
-    def test_parent_first_order_with_numeric_ids(self) -> None:
-        ordered = compute_creation_order(list(self.items_by_id.values()))
-        ordered_ids = [str(item['id']) for item in ordered]
-        self.assertLess(ordered_ids.index('100'), ordered_ids.index('101'))
 
     def test_payload_uses_string_todoist_id(self) -> None:
         item = _item_by_id(self.items_by_id, '100')
