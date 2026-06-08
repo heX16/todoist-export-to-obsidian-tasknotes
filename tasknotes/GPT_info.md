@@ -130,7 +130,7 @@ todoist_id: 6c2pWG4XgMCXPhM8
 | `priority` | `priority` | `1→none`, `2→low`, `3→normal`, `4→high` |
 | `due.date` | `due` | ISO date |
 | `labels[]` | `tags[]` | TaskNotes добавляет `task` |
-| `project.name` | `projects[]` | имя, не id |
+| `project.name` | `projects[]` | только у корневых задач (без `parent_id`); имя, не id |
 | `duration` | `timeEstimate` | минуты (minute/hour/day) |
 | `id` | `customProperties.todoist_id` | идемпотентность |
 | `added_at` | `dateCreated` | ISO datetime, дата создания задачи |
@@ -147,13 +147,17 @@ todoist_id: 6c2pWG4XgMCXPhM8
 
 ### Subtasks
 
-Режим по умолчанию: `native-project-link`
+Режим по умолчанию: `native-project-link` (ещё: `metadata-only`, `parent-project-only`).
 
-- child получает `projects: ["[[parent-basename]]"]` (без ссылки на Todoist-проект)
-- порядок создания не важен: мигратор делает два прохода (create → attach parent link)
-- если родитель ещё не известен при создании, `projects` опускается и дополняется во втором проходе
+- Корень → `projects: [TodoistProject]`
+- Сабтаск → только `projects: ["[[parent-basename]]"]` (stem файла родителя в vault)
 
-Другие режимы: `--subtasks-mode metadata-only`, `--subtasks-mode parent-project-only`
+**Два прохода:** parent link требует путь к файлу родителя, а в экспорте дети часто идут раньше родителей — сортировка не нужна.
+
+1. **Pass 1** (`POST`): создать задачи в порядке JSON. Сабтаск с известным родителем — сразу с link, иначе без `projects`.
+2. **Pass 2** (`GET`+`PUT`, только реальный запуск): пересобрать кэш `todoist_id→path`, дописать недостающий `[[parent]]` в `projects` (append-only, идемпотентно).
+
+`--limit` — только pass 1. `--dry-run` / `metadata-only` — pass 2 пропускается.
 
 ### Идемпотентность
 
