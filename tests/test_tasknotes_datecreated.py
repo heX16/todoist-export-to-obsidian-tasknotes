@@ -13,70 +13,25 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
-from datetime import datetime, timezone
 from typing import Any
 
 import pytest
 
 import testdata  # noqa: F401
 
+from tasknotes_api_testlib import (  # noqa: E402
+    api_is_available,
+    create_task,
+    delete_task,
+    iso_now_for_title,
+    read_task,
+)
 from todoist_tasknotes_mapping import (  # noqa: E402
     DEFAULT_API_BASE,
     DEFAULT_API_TOKEN,
-    api_request,
 )
 
 DEFAULT_TEST_DATE_CREATED = '2000-01-02T03:04:05Z'
-API_HEALTH_TIMEOUT_SECONDS = 2
-
-
-def _iso_now_for_title() -> str:
-    return datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
-
-
-def _extract_task_path(create_response: dict[str, Any]) -> str:
-    data = create_response.get('data', {}) if isinstance(create_response, dict) else {}
-    path = data.get('path') or data.get('id')
-    if not path:
-        raise RuntimeError(f'No task path in response: {json.dumps(create_response, ensure_ascii=False)}')
-    return str(path)
-
-
-def _encoded_task_url(api_base: str, task_path: str) -> str:
-    encoded_path = urllib.parse.quote(task_path, safe='')
-    return f'{api_base}/api/tasks/{encoded_path}'
-
-
-def _delete_task(api_base: str, api_token: str, task_path: str) -> None:
-    status, body = api_request('DELETE', _encoded_task_url(api_base, task_path), api_token)
-    if status in (200, 204) and (status == 204 or body.get('success')):
-        return
-    raise RuntimeError(
-        f'Failed to delete test task: HTTP {status} {json.dumps(body, ensure_ascii=False)}'
-    )
-
-
-def api_is_available(api_base: str, api_token: str) -> bool:
-    url = f'{api_base.rstrip("/")}/api/health'
-    request = urllib.request.Request(
-        url,
-        headers={
-            'Authorization': f'Bearer {api_token}',
-            'Accept': 'application/json',
-        },
-        method='GET',
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=API_HEALTH_TIMEOUT_SECONDS) as response:
-            if response.status != 200:
-                return False
-            body = json.loads(response.read().decode('utf-8'))
-            return bool(body.get('success'))
-    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
-        return False
 
 
 def verify_date_created_roundtrip(
@@ -89,7 +44,7 @@ def verify_date_created_roundtrip(
 ) -> tuple[str, str | None, str]:
     """Create a task, read it back, optionally delete it, return (requested, stored, task_path)."""
     requested_date_created = str(date_created)
-    task_title = title or f'dateCreated API test {_iso_now_for_title()}'
+    task_title = title or f'dateCreated API test {iso_now_for_title()}'
 
     create_payload: dict[str, Any] = {
         'title': task_title,
@@ -97,26 +52,14 @@ def verify_date_created_roundtrip(
         'dateCreated': requested_date_created,
     }
 
-    status, body = api_request('POST', f'{api_base}/api/tasks', api_token, create_payload)
-    if status != 201 or not body.get('success'):
-        raise RuntimeError(
-            f'Failed to create task with dateCreated: HTTP {status} {json.dumps(body, ensure_ascii=False)}'
-        )
-
-    task_path = _extract_task_path(body)
+    task_path, _create_data = create_task(api_base, api_token, create_payload)
     try:
-        status, read_body = api_request('GET', _encoded_task_url(api_base, task_path), api_token)
-        if status != 200 or not read_body.get('success'):
-            raise RuntimeError(
-                f'Failed to read created task back: HTTP {status} {json.dumps(read_body, ensure_ascii=False)}'
-            )
-
-        task_data = read_body.get('data', {}) or {}
+        task_data = read_task(api_base, api_token, task_path)
         stored_date_created = task_data.get('dateCreated')
         return requested_date_created, stored_date_created, task_path
     finally:
         if delete_after:
-            _delete_task(api_base, api_token, task_path)
+            delete_task(api_base, api_token, task_path)
 
 
 @pytest.mark.integration
@@ -160,7 +103,7 @@ def main() -> int:
         return 4
 
     create_payload_preview = {
-        'title': args.title or f'dateCreated API test {_iso_now_for_title()}',
+        'title': args.title or f'dateCreated API test {iso_now_for_title()}',
         'details': f'Requested dateCreated: {args.date_created}\n',
         'dateCreated': str(args.date_created),
     }
