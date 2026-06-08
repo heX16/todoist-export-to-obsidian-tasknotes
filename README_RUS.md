@@ -43,36 +43,20 @@ python -m pip install -r requirements.txt
 Settings -> TaskNotes -> Integrations -> HTTP API
 ```
 
-В vault должно быть настроено пользовательское поле TaskNotes для идемпотентности:
-
-- Ключ: `todoist_id`
-- Тип: `text`
-
-После изменения пользовательских полей TaskNotes перезагрузите плагин или
-перезапустите Obsidian.
+На том же экране настроек укажите в поле **API authentication token**
+произвольную строку (например, `token`). То же значение передайте в
+`--api-token` при запуске скрипта миграции.
 
 ## Использование
 
-Сначала выполните dry-run, чтобы посмотреть payload-ы без записи:
-
-```bash
-python migrate_todoist_to_tasknotes.py --api-token=<token> --dry-run --limit 5
-```
-
-Пробный реальный прогон на небольшом числе задач:
-
-```bash
-python migrate_todoist_to_tasknotes.py --api-token=<token> --limit 10
-```
-
-Полная миграция:
+Миграция:
 
 ```bash
 python migrate_todoist_to_tasknotes.py --api-token=<token>
 ```
 
-Повторите миграцию, чтобы проверить идемпотентность. Успешный повторный прогон
-не должен создавать новых задач и должен помечать дубликаты как пропущенные.
+Успешный повторный прогон не должен создавать новых задач и должен помечать
+дубликаты как пропущенные.
 
 ## Параметры
 

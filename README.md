@@ -43,26 +43,11 @@ Start Obsidian, open the target vault, and enable the TaskNotes HTTP API:
 Settings -> TaskNotes -> Integrations -> HTTP API
 ```
 
-The vault must define a TaskNotes user field for idempotency:
-
-- Key: `todoist_id`
-- Type: `text`
-
-After changing TaskNotes user fields, reload the plugin or restart Obsidian.
+In the same settings screen, set **API authentication token** to any arbitrary
+string value (for example, `token`). Pass the same value to `--api-token` when
+running the migration script.
 
 ## Usage
-
-Run a dry run first to inspect the payloads without writing anything:
-
-```bash
-python migrate_todoist_to_tasknotes.py --api-token=<token> --dry-run --limit 5
-```
-
-Run a small real migration:
-
-```bash
-python migrate_todoist_to_tasknotes.py --api-token=<token> --limit 10
-```
 
 Run the full migration:
 
